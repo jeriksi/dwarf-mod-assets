@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Multidonate Dwarf Mod
 // @namespace   http://tampermonkey.net/
-// @version     173.0
+// @version     179.0
 // @match       https://play.multidonate.ru/*
 // @run-at      document-start
 // @grant       none
@@ -13,18 +13,19 @@
     // ==========================================
     // ЧАСТЬ 1: КОНФИГУРАЦИЯ
     // ==========================================
-
-    // Настройка шрифта для ников в ГОРОДЕ
     window.FONT_CONFIG = {
         family: 'system-ui, -apple-system, sans-serif',
         size: 12,
         weight: 'bold'
     };
 
-    const NAMEPLATE_CONFIG = { offsetY: -65 };
+    // Настройки ников в ШАХТЕ (HTML)
+    const NAMEPLATE_CONFIG = { offsetY: -75, offsetX: 0 };
+
+    // Настройки ников в ГОРОДЕ (Canvas)
+    window.CITY_NAMEPLATE_CONFIG = { offsetY: 0, offsetX: 3 };
 
     // 1. Спрайты для КЛАССОВ и ФОРМ (Вложенная структура)
-    // Ищи по слову ЛЕГИОНЕР, ЛУЧНИК и т.д. и меняй на свой base64
     const CLASS_SPRITES = {
         legionary: {
             default: "data:image/png;base64,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",
@@ -100,6 +101,7 @@
         }
     };
 
+    // Спрайты для конкретных ников
     const PLAYER_SPRITES = {
         // 'НикИгрока': 'https://ссылка.на/вашу/картинку.png',
         'Ananta_Shesha': 'data:image/png;base64,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',
@@ -113,6 +115,7 @@
         'strannik_144': 'data:image/png;base64,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',
     };
 
+
     // 3. Спрайты для НПС (Гром и Кремень)
     const NPC_SPRITES = {
         city: "data:image/png;base64,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",
@@ -124,7 +127,7 @@
         "Дворфийская Гильдия": {
             color: "#ff9900", // Оранжевый
             icon: "⛏️",
-            members: ["jeriksi", "3oda", "enigmo6249", "TsoiVechen210662", "spector99th", "xo.neontop", "timaxionit", "leshalapin", "fireartutzxc", "i_rekd_i", "vordaoluh", "great913", "coda0165_84965", "rav6r", "anantashesha3823", "domino_s67", "hOst1k"]
+            members: ["jeriksi", "3oda", "enigmo6249", "TsoiVechen210662", "spector99th", "xo.neontop", "timaxionit", "leshalapin", "fireartutzxc", "i_rekd_i", "vordaoluh", "great913", "coda0165_84965", "rav6r", "Ananta_Shesha", "domino_s67", "hOst1k"]
         },
         "Дискорд канал": {
             color: "#00ffff", // Голубой
@@ -135,7 +138,8 @@
 
     // 5. Выделение игроков в шахте (цвет плашки)
     const CUSTOM_COLORS  = {
-        // "Ник": { color: '#ff0000', bg: 'rgba(255, 0, 0, 0.2)' },
+    "Silz_1": { color: "#46c213", bg: 'rgba(70, 194, 19, 0.3)' },
+    // "Ник": { color: '#ff0000', bg: 'rgba(255, 0, 0, 0.2)' },
     };
 
     // Делаем переменные видимыми внутри Canvas хуков
@@ -145,9 +149,19 @@
     // 6. Спрайт кирки
     const PICKAXE_SPRITE_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAArtJREFUeJzt289PlEccx/HXAgtLYG1KLEGgto00MT1IYnqx1YPpH+3RQzFpDMRkEdEDXhYTOPDD0ggukKeHnWlEga7KMjx55n3ZfZ6ZZ/aT73zmx/OdLJlqU+tDm8UV0NAzAyl//CpwkdEv4PvZ2RM3JyYmTlzXh4ZA+80bsLm52Q8tPZMd8Bl1zx3bv9+7B+rDw2B2Zga0nj8Ha2tr3fLggN23b79Ew4VTeQcM9VCngF/v3gXfXb8OVl++7JYOdGP4z7t34MdY/uoVaLVaZ7WbtOcj2QG9VqzX62BgcBAcHByAWnDAT/PzYHFpCayvr8dHr0RPn0XlHdBL7xQwMz0NOoeHYDg4otFogLXXr7+k7eRU3gHnzQEF/Dw3B9phTDdGRsAPN2+ivD0fyQ44q2BsbAyMj4+DPx4+BN+Gvf3CkydgZ2enrwL7TXbAKfcKmLt1C4yOjoJG+PxzYQG02+2PnyvV2I9U3gEf9loB83fugOa1a+DG1BRYefECbG1tgaOwH9ja3j6trdJQeQf8NwfEWT8yNTkJOp0OWF1dBb+F9/7d3V2ccEApyQ4Qxv4vt2+D6bDnj7P+40ePQFF0E0LDIeNzdHR0qUL7RXZA/BJ3fFNh1l9cXMSnYzw6YHCo51TClSY74MH9+2AyzPpxbC89exbrxPX9RFa48/79ZejrO9kBh2Gd/ybs/P56+vTcB+JqcHx83F9ll0R2QJz1l1dWQGt5OZadurdvhtXi7729vou7DLID4pgfCbm+/6XWNcZgOB8oO9kBGxsbH987970+rgK1Wilf/z8hO8BXZnKazSbYK+mqUHkH5ACkFpCaHIDUAlKTA5BaQGpyAFILSE0OQGoBqckBSC0gNTkAqQWk5rMP+LbDWeH+/j7KmweIVN4BF/GPkVInByvvgK855C91z0cq74BMJlNt/gWXuZ5F2LJzOwAAAABJRU5ErkJggg==";
 
+    function getPlayerSprite(username) {
+        if (!username || typeof username !== 'string') return null;
+        const clean = username.trim();
+        if (PLAYER_SPRITES[clean]) return PLAYER_SPRITES[clean];
+        const lower = clean.toLowerCase();
+        for (const k in PLAYER_SPRITES) {
+            if (k.toLowerCase() === lower) return PLAYER_SPRITES[k];
+        }
+        return null;
+    }
 
     // ==========================================
-    // ЧАСТЬ 2: ГЛУШИТЕЛЬ И БАЗА
+    // ЧАСТЬ 2: ГЛУШИТЕЛЬ + КЛАССЫ
     // ==========================================
     const IGNORE_STRINGS = ['не запеклось', 'Invalid encoded image data', 'citygl.js'];
     ['log', 'warn', 'error', 'info', 'debug'].forEach(method => {
@@ -185,58 +199,16 @@
     const playerGearCache = {};
     let lastMyGear = null;
     window.myUsername = null;
+    window.myLook = null;
     let gearCacheVersion = 0;
     let cityPlayersQueue = [];
+    let dwarf_render_me = false;
 
-    // ==========================================
-    // ЧАСТЬ 3: СЕТЬ
-    // ==========================================
     function triggerGameRerender() {
         if (window.MDDoodle && typeof window.MDDoodle.update === 'function') window.MDDoodle.update();
         window.dispatchEvent(new Event('resize'));
         processCharacterTab();
     }
-
-    const originalFetch = window.fetch;
-    window.fetch = async function(...args) {
-        const url = args[0];
-        const response = await originalFetch.apply(this, args);
-        try {
-            if (typeof url === 'string') {
-                const clone = response.clone();
-                let data = await clone.json();
-
-                if (url.includes('/api/me') && data?.user?.login) {
-                    window.myUsername = data.user.login;
-                    if (data?.hero?.gear) {
-                        lastMyGear = data.hero.gear;
-                        playerGearCache[window.myUsername] = data.hero.gear;
-                    }
-                }
-                if (url.includes('/api/equip')) {
-                    const gear = data?.hero?.gear || data?.gear;
-                    if (gear !== undefined) {
-                        lastMyGear = gear;
-                        playerGearCache[window.myUsername] = gear;
-                        gearCacheVersion++;
-                        setTimeout(triggerGameRerender, 50);
-                    }
-                }
-                if (url.includes('/api/city/enter') || url.includes('/api/city/go')) {
-                    if (data?.me?.gear) {
-                        lastMyGear = data.me.gear;
-                        if (window.myUsername) playerGearCache[window.myUsername] = data.me.gear;
-                    }
-                    if (data.a && Array.isArray(data.a)) {
-                        cityPlayersQueue = data.a.map(p => ({ who: p.who || p.name || '', look: p.look || null }));
-                    }
-                    setTimeout(triggerGameRerender, 50);
-                }
-                return response;
-            }
-        } catch (e) {}
-        return response;
-    };
 
     function detectPlayerClass(gear, role) {
         if (role && CLASSES[role]) return CLASSES[role];
@@ -256,43 +228,207 @@
     }
 
     // ==========================================
-    // ЧАСТЬ 4: ГОРОД (Blob + Canvas)
+    // ЧАСТЬ 3: fetch ХУК
     // ==========================================
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+        const url = args[0];
+        const response = await originalFetch.apply(this, args);
+        try {
+            if (typeof url === 'string') {
+                const clone = response.clone();
+                let data = await clone.json();
+
+                if (url.includes('/api/me') && data?.user?.login) {
+                    window.myUsername = data.user.login;
+                    if (data?.hero?.look) window.myLook = data.hero.look;
+                    if (data?.hero?.gear) {
+                        lastMyGear = data.hero.gear;
+                        playerGearCache[window.myUsername] = data.hero.gear;
+                    }
+                }
+                if (url.includes('/api/equip')) {
+                    const gear = data?.hero?.gear;
+                    if (gear !== undefined) {
+                        lastMyGear = gear;
+                        if (data?.hero?.look) window.myLook = data.hero.look;
+                        if (window.myUsername) playerGearCache[window.myUsername] = gear;
+                        gearCacheVersion++;
+                        dwarf_render_me = true;
+                        if (window.myUsername) {
+                            const myIdx = cityPlayersQueue.findIndex(p => p.who === window.myUsername);
+                            if (myIdx !== -1 && window.myLook) cityPlayersQueue[myIdx].look = window.myLook;
+                        }
+                        setTimeout(triggerGameRerender, 50);
+                    }
+                }
+                if (url.includes('/api/city/enter') || url.includes('/api/city/go')) {
+                    if (data?.me?.gear) {
+                        lastMyGear = data.me.gear;
+                        if (data?.me?.look) window.myLook = data.me.look;
+                        if (window.myUsername) playerGearCache[window.myUsername] = data.me.gear;
+                    }
+                    if (data.a && Array.isArray(data.a)) {
+                        cityPlayersQueue = data.a.map(p => ({ who: p.who || p.name || '', look: p.look || null }));
+                    }
+                    setTimeout(triggerGameRerender, 50);
+                }
+                return response;
+            }
+        } catch (e) {}
+        return response;
+    };
+
+    const OriginalXHR = window.XMLHttpRequest;
+    if (OriginalXHR) {
+        const openXHR = OriginalXHR.prototype.open;
+        const sendXHR = OriginalXHR.prototype.send;
+        OriginalXHR.prototype.open = function(method, url, ...rest) {
+            this._dwarfUrl = url;
+            return openXHR.call(this, method, url, ...rest);
+        };
+        OriginalXHR.prototype.send = function(...args) {
+            this.addEventListener('load', function() {
+                try {
+                    const url = String(this._dwarfUrl || '');
+                    if (!this.responseText) return;
+
+                    if (url.includes('/api/city/enter') || url.includes('/api/city/go')) {
+                        const data = JSON.parse(this.responseText);
+                        if (data?.me?.gear) {
+                            lastMyGear = data.me.gear;
+                            if (data?.me?.look) window.myLook = data.me.look;
+                            if (window.myUsername) playerGearCache[window.myUsername] = data.me.gear;
+                        }
+                        if (data?.a && Array.isArray(data.a)) {
+                            cityPlayersQueue = data.a.map(p => ({ who: p.who || p.name || '', look: p.look || null }));
+                        }
+                        setTimeout(triggerGameRerender, 50);
+                    }
+                    if (url.includes('/api/me')) {
+                        const data = JSON.parse(this.responseText);
+                        if (data?.user?.login) window.myUsername = data.user.login;
+                        if (data?.hero?.look) window.myLook = data.hero.look;
+                        if (data?.hero?.gear) {
+                            lastMyGear = data.hero.gear;
+                            if (window.myUsername) playerGearCache[window.myUsername] = data.hero.gear;
+                        }
+                    }
+                    if (url.includes('/api/equip')) {
+                        const data = JSON.parse(this.responseText);
+                        if (data?.hero?.gear !== undefined) {
+                            lastMyGear = data.hero.gear;
+                            if (data?.hero?.look) window.myLook = data.hero.look;
+                            if (window.myUsername) playerGearCache[window.myUsername] = data.hero.gear;
+                            gearCacheVersion++;
+                            dwarf_render_me = true;
+                            if (window.myUsername) {
+                                const myIdx = cityPlayersQueue.findIndex(p => p.who === window.myUsername);
+                                if (myIdx !== -1 && window.myLook) cityPlayersQueue[myIdx].look = window.myLook;
+                            }
+                            setTimeout(triggerGameRerender, 50);
+                        }
+                    }
+                } catch (e) {}
+            });
+            return sendXHR.apply(this, args);
+        };
+    }
+
+    // ==========================================
+    // ЧАСТЬ 4: Blob-прокси
+    // ==========================================
+    function getSvgColors(svgStr) {
+        return svgStr.match(/#[0-9a-fA-F]{3,6}/g) || [];
+    }
+
+    function isMyBlob(svgStr) {
+        if (!window.myLook) return false;
+        const hexes = getSvgColors(svgStr);
+        if (hexes.length === 0) return false;
+        const myColors = [window.myLook.skin, window.myLook.hair, window.myLook.shirt, window.myLook.pants].filter(Boolean);
+        if (myColors.length === 0) return false;
+        let matches = 0;
+        for (const c of myColors) {
+            if (hexes.includes(c)) matches++;
+        }
+        return matches >= 2;
+    }
+
+    function matchBlobToPlayer(svgStr) {
+        if (!cityPlayersQueue.length) return null;
+        const hexes = getSvgColors(svgStr);
+        if (hexes.length === 0) return null;
+
+        for (let i = 0; i < cityPlayersQueue.length; i++) {
+            const p = cityPlayersQueue[i];
+            if (!p.look) continue;
+            const colors = [p.look.skin, p.look.hair, p.look.shirt, p.look.pants].filter(Boolean);
+            if (colors.length === 0) continue;
+
+            let matches = 0;
+            for (const c of colors) {
+                if (hexes.includes(c)) matches++;
+            }
+            if (matches >= 2) {
+                return cityPlayersQueue.splice(i, 1)[0];
+            }
+        }
+        return null;
+    }
+
     const OriginalBlob = window.Blob;
     window.Blob = new Proxy(OriginalBlob, {
         construct(target, args) {
             const [parts, options] = args;
             if (options && options.type === 'image/svg+xml' && parts && typeof parts[0] === 'string') {
                 const svgStr = parts[0];
-                if (svgStr.includes('cyq-') && svgStr.length > 18000 && svgStr.length < 30000) {
-                    const match = svgStr.match(/<svg([^>]+)>([\s\S]*)<\/svg>/);
-                    if (match) {
-                        let npcSprite = NPC_SPRITES.city;
-                        const newSvg = `<svg ${match[1]} xmlns:xlink="http://www.w3.org/1999/xlink"><g opacity="0">${match[2]}</g><image href="${npcSprite}" xlink:href="${npcSprite}" x="0" y="0" width="100%" height="100%" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
-                        return new target([newSvg], options);
-                    }
-                }
-                if (!svgStr.includes('tilelow') && !svgStr.includes('mnbW') && svgStr.length > 12000 && svgStr.length < 18000) {
-                    const match = svgStr.match(/<svg([^>]+)>([\s\S]*)<\/svg>/);
-                    if (match) {
-                        let targetPlayer = cityPlayersQueue.shift() || null;
-                        let spriteUrl = CLASS_SPRITES.legionary.default;
 
-                        if (targetPlayer) {
-                            if (PLAYER_SPRITES[targetPlayer.who]) {
-                                spriteUrl = PLAYER_SPRITES[targetPlayer.who];
-                            } else {
-                                const shape = targetPlayer.look?.shape;
-                                const classData = CLASS_SPRITES.legionary;
-                                if (shape && classData[shape]) spriteUrl = classData[shape];
-                                else spriteUrl = classData.default;
+                if (!svgStr.includes('tilelow') && !svgStr.includes('mnbW') &&
+                    svgStr.length > 12000 && svgStr.length < 18000) {
+
+                    const match = svgStr.match(/<svg([^>]+)>([\s\S]*)<\/svg>/);
+                    if (match) {
+                        let isMe = isMyBlob(svgStr) || (dwarf_render_me && !getSvgColors(svgStr).length);
+
+                        if (isMe) {
+                            dwarf_render_me = false;
+                            const myUnique = getPlayerSprite(window.myUsername);
+                            if (myUnique) {
+                                const newSvg = `<svg ${match[1]} xmlns:xlink="http://www.w3.org/1999/xlink"><g opacity="0">${match[2]}</g><image href="${myUnique}" xlink:href="${myUnique}" x="0" y="0" width="100%" height="100%" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
+                                return new target([newSvg], options);
                             }
-                        } else {
-                            spriteUrl = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'><rect width='32' height='32' fill='red'/></svg>";
+
+                            const playerClass = detectPlayerClass(lastMyGear);
+                            const shape = window.myLook?.shape;
+                            const classData = CLASS_SPRITES[playerClass.key] || CLASS_SPRITES.recruit;
+                            const spriteUrl = (shape && classData[shape]) ? classData[shape] : classData.default;
+
+                            const newSvg = `<svg ${match[1]} xmlns:xlink="http://www.w3.org/1999/xlink"><g opacity="0">${match[2]}</g><image href="${spriteUrl}" xlink:href="${spriteUrl}" x="0" y="0" width="100%" height="100%" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
+                            return new target([newSvg], options);
                         }
 
-                        const newSvg = `<svg ${match[1]} xmlns:xlink="http://www.w3.org/1999/xlink"><g opacity="0">${match[2]}</g><image href="${spriteUrl}" xlink:href="${spriteUrl}" x="0" y="0" width="100%" height="100%" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
-                        return new target([newSvg], options);
+                        let targetPlayer = matchBlobToPlayer(svgStr);
+                        if (!targetPlayer && cityPlayersQueue.length > 0 && !isMe) {
+                            targetPlayer = cityPlayersQueue.shift();
+                        }
+
+                        let spriteUrl = null;
+                        if (targetPlayer) {
+                            spriteUrl = getPlayerSprite(targetPlayer.who);
+                            if (!spriteUrl) {
+                                const gear = playerGearCache[targetPlayer.who] || {};
+                                const playerClass = detectPlayerClass(gear, targetPlayer.role);
+                                const shape = targetPlayer.look?.shape;
+                                const classData = CLASS_SPRITES[playerClass.key] || CLASS_SPRITES.recruit;
+                                spriteUrl = (shape && classData[shape]) ? classData[shape] : classData.default;
+                            }
+
+                            const newSvg = `<svg ${match[1]} xmlns:xlink="http://www.w3.org/1999/xlink"><g opacity="0">${match[2]}</g><image href="${spriteUrl}" xlink:href="${spriteUrl}" x="0" y="0" width="100%" height="100%" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
+                            return new target([newSvg], options);
+                        } else {
+                            return new target(...args);
+                        }
                     }
                 }
             }
@@ -300,12 +436,17 @@
         }
     });
 
+    // ==========================================
+    // ЧАСТЬ 4b: Canvas — плашки имён
+    // ==========================================
     function isNameplateCanvas(canvas) {
         return canvas && canvas.height > 0 && canvas.height < 100 && canvas.width > canvas.height;
     }
 
     function hookContext(ContextClass) {
         if (!ContextClass || !ContextClass.prototype) return;
+
+        const nativeStrokeText = ContextClass.prototype.strokeText;
 
         const blockMethods = ['fill', 'stroke', 'fillRect', 'strokeRect', 'arc', 'ellipse', 'strokeText'];
         blockMethods.forEach(method => {
@@ -334,10 +475,12 @@
 
                 let textColor = '#ffffff';
                 if (window.CUSTOM_COLORS[trimmedText]) {
-                    textColor = window.CUSTOM_COLORS[trimmedText];
+                    const custom = window.CUSTOM_COLORS[trimmedText];
+                    textColor = (typeof custom === 'string') ? custom : (custom.color || '#ffffff');
                 } else {
+                    const lower = trimmedText.toLowerCase();
                     for (const g in window.GUILDS) {
-                        if (window.GUILDS[g].members.includes(trimmedText)) {
+                        if (window.GUILDS[g].members.some(m => m.toLowerCase() === lower)) {
                             textColor = window.GUILDS[g].color;
                             break;
                         }
@@ -345,16 +488,32 @@
                 }
 
                 this.save();
-
                 const isMe = window.myUsername && trimmedText === window.myUsername;
                 const currentSize = isMe ? window.FONT_CONFIG.size + 2 : window.FONT_CONFIG.size;
                 const currentWeight = (window.FONT_CONFIG.weight === 'bold' || isMe) ? 'bold' : 'normal';
+                const originalAlign = this.textAlign || 'start';
+                const oldWidth = this.measureText(text).width;
 
                 this.font = `${currentWeight} ${currentSize}px ${window.FONT_CONFIG.family}`;
+                this.textAlign = 'center';
+                this.textBaseline = 'middle';
+
+                let drawX = x;
+                if (originalAlign === 'left' || originalAlign === 'start') drawX += oldWidth / 2;
+                else if (originalAlign === 'right' || originalAlign === 'end') drawX -= oldWidth / 2;
+
+                drawX += window.CITY_NAMEPLATE_CONFIG.offsetX;
+                const drawY = y + window.CITY_NAMEPLATE_CONFIG.offsetY;
+
+                if (nativeStrokeText) {
+                    this.lineWidth = 3;
+                    this.strokeStyle = '#000000';
+                    this.lineJoin = 'round';
+                    nativeStrokeText.call(this, text, drawX, drawY, maxWidth);
+                }
                 this.fillStyle = textColor;
                 this.shadowBlur = 0;
-
-                originalFillText.call(this, text, x, y, maxWidth);
+                originalFillText.call(this, text, drawX, drawY, maxWidth);
                 this.restore();
                 return;
             }
@@ -368,7 +527,7 @@
     }
 
     // ==========================================
-    // ЧАСТЬ 5: UI 2D (Чат) + МЕНЮ
+    // ЧАСТЬ 5: UI 2D + МЕНЮ
     // ==========================================
     function initDwarfEngine() {
         if (!window.MDDoodle || typeof window.MDDoodle.jDoodle !== 'function') {
@@ -394,14 +553,10 @@
             const playerClass = detectPlayerClass(gear, role);
             const shape = look && look.shape;
 
-            let spritesheetUrl = PLAYER_SPRITES[extra.who];
+            let spritesheetUrl = getPlayerSprite(extra.who);
             if (!spritesheetUrl) {
                 const classData = CLASS_SPRITES[playerClass.key] || CLASS_SPRITES.recruit;
-                if (shape && classData[shape]) {
-                    spritesheetUrl = classData[shape];
-                } else {
-                    spritesheetUrl = classData.default;
-                }
+                spritesheetUrl = (shape && classData[shape]) ? classData[shape] : classData.default;
             }
 
             const renderSize = 128, frameSize = 32;
@@ -417,10 +572,11 @@
             let playerClass = CLASSES.recruit;
             if (lastMyGear) playerClass = detectPlayerClass(lastMyGear);
 
-            let spriteUrl = PLAYER_SPRITES[window.myUsername];
+            let spriteUrl = getPlayerSprite(window.myUsername);
             if (!spriteUrl) {
                 const classData = CLASS_SPRITES[playerClass.key] || CLASS_SPRITES.recruit;
-                spriteUrl = classData.default;
+                const shape = window.myLook?.shape;
+                spriteUrl = (shape && classData[shape]) ? classData[shape] : classData.default;
             }
 
             svg.innerHTML = `<svg x="-4" y="42" width="128" height="128" viewBox="0 0 32 32"><image href="${spriteUrl}" width="32" height="32" style="image-rendering: pixelated;" /></svg>`;
@@ -432,7 +588,7 @@
     // ЧАСТЬ 6: ШАХТА
     // ==========================================
     const FACING_CONFIG = { invertHorizontal: true, invertVertical: false, forceFlip: false, ignoreGameFlip: false };
-    const mineStyleId = 'dwarf-mine-v173-style';
+    const mineStyleId = 'dwarf-mine-v179-style';
     if (!document.getElementById(mineStyleId)) {
         const style = document.createElement('style');
         style.id = mineStyleId;
@@ -455,13 +611,13 @@
             .mn-nm2, .mn-menm, .mn-lbl, .mn-hl { display: none !important; }
 
             .clean-nameplate {
-                position: absolute; top: ${NAMEPLATE_CONFIG.offsetY}px; left: 50%; transform: translateX(-50%);
+                position: absolute; top: ${NAMEPLATE_CONFIG.offsetY}px; left: 50%;
+                transform: translateX(calc(-50% + ${NAMEPLATE_CONFIG.offsetX}px));
                 font-family: sans-serif; font-size: 14px; font-weight: bold;
-                color: #fff; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-                white-space: nowrap; pointer-events: none; z-index: 10; padding: 1px 4px; border-radius: 4px;
-                display: flex; align-items: center; gap: 4px;
+                white-space: nowrap; pointer-events: none; z-index: 9999 !important;
+                padding: 0; display: flex; align-items: center; gap: 4px;
             }
-            .clean-nameplate.is-me { font-size: 16px; font-weight: 900; z-index: 20; }
+            .clean-nameplate.is-me { font-size: 16px; font-weight: 900; z-index: 10000 !important; }
         `;
         (document.head || document.documentElement).appendChild(style);
     }
@@ -471,7 +627,8 @@
             const username = el.getAttribute('data-l') ? el.getAttribute('data-l').trim() : '';
             if (!username) return CLASS_SPRITES.recruit.default;
 
-            if (PLAYER_SPRITES[username]) return PLAYER_SPRITES[username];
+            const unique = getPlayerSprite(username);
+            if (unique) return unique;
 
             const lkAttr = el.getAttribute('data-lk') || '';
             let gear = {}, role = null, shape = null;
@@ -480,23 +637,19 @@
                     const lkData = JSON.parse(lkAttr);
                     const look = Array.isArray(lkData) ? lkData[0] : null;
                     if (look && look.shape) shape = look.shape;
-
                     gear = Array.isArray(lkData) ? lkData[1] : (lkData?.g || lkData?.gear || lkData);
                     role = Array.isArray(lkData) ? lkData[0] : lkData?.role;
                 } catch (e) {}
             }
-
-            const lkHasWeapon = gear && gear.w;
-            const cacheHasWeapon = playerGearCache[username] && playerGearCache[username].w;
-            if (!lkHasWeapon && cacheHasWeapon) gear = playerGearCache[username];
-
+            if (username === window.myUsername && lastMyGear) gear = lastMyGear;
+            else {
+                const lkHasWeapon = gear && gear.w;
+                const cacheHasWeapon = playerGearCache[username] && playerGearCache[username].w;
+                if (!lkHasWeapon && cacheHasWeapon) gear = playerGearCache[username];
+            }
             const playerClass = detectPlayerClass(gear, role);
             const classData = CLASS_SPRITES[playerClass.key] || CLASS_SPRITES.recruit;
-
-            if (shape && classData[shape]) {
-                return classData[shape];
-            }
-            return classData.default;
+            return (shape && classData[shape]) ? classData[shape] : classData.default;
         } catch (e) {}
         return CLASS_SPRITES.recruit.default;
     }
@@ -521,16 +674,20 @@
         if (nameplate) {
             if (username) {
                 let guildColor = null, guildIcon = '';
-                if (window.CUSTOM_COLORS[username]) guildColor = window.CUSTOM_COLORS[username];
-                else {
+                if (window.CUSTOM_COLORS[username]) {
+                    const custom = window.CUSTOM_COLORS[username];
+                    guildColor = (typeof custom === 'string') ? custom : custom.color;
+                } else {
+                    const lower = username.toLowerCase();
                     for (const g in window.GUILDS) {
-                        if (window.GUILDS[g].members.includes(username)) {
+                        if (window.GUILDS[g].members.some(m => m.toLowerCase() === lower)) {
                             guildColor = window.GUILDS[g].color;
                             guildIcon = window.GUILDS[g].icon || '';
                             break;
                         }
                     }
                 }
+
                 nameplate.innerHTML = '';
                 if (guildIcon) {
                     const iconSpan = document.createElement('span');
@@ -540,16 +697,28 @@
                 const nameSpan = document.createElement('span');
                 nameSpan.textContent = username;
                 nameplate.appendChild(nameSpan);
+
                 nameplate.classList.remove('is-me');
-                if (window.myUsername && username === window.myUsername) nameplate.classList.add('is-me');
-                if (guildColor) {
-                    nameplate.style.color = guildColor;
-                    nameplate.style.textShadow = window.myUsername && username === window.myUsername
-                        ? `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 10px ${guildColor}, 0 0 20px ${guildColor}`
-                        : `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 6px ${guildColor}`;
-                } else {
-                    nameplate.style.color = '#ffffff';
-                    nameplate.style.textShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000`;
+                const isMe = window.myUsername && username === window.myUsername;
+                if (isMe) nameplate.classList.add('is-me');
+
+                // Всегда применяем цвет гильдии, если он есть. Иначе белый.
+                nameplate.style.color = guildColor ? guildColor : '#ffffff';
+
+                // Уменьшаем обводку, чтобы она не перекрывала цвет текста
+                nameplate.style.textShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000`;
+                nameplate.style.webkitTextStroke = `0.5px black`;
+                nameplate.style.paintOrder = `stroke fill`;
+                nameplate.style.zIndex = `9999`;
+                nameplate.style.opacity = `1`;
+
+                // Если это мы, добавляем свечение цвета гильдии
+                if (isMe) {
+                    if (guildColor) {
+                        nameplate.style.textShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px ${guildColor}`;
+                    } else {
+                        nameplate.style.textShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px #fff`;
+                    }
                 }
             } else nameplate.textContent = '';
         }
@@ -611,5 +780,5 @@
     document.querySelectorAll('.mn-h').forEach(initMineHero);
     requestAnimationFrame(tickHeroes);
 
-    console.log('%c[DwarfMod v173.0] Внедрена система Класс -> Форма. Ошибки исправлены.', 'color:#0f0;font-weight:bold');
+    console.log('%c[DwarfMod v179] Цвет гильдии применяется всегда, добавлено свечение для себя.', 'color:#0f0;font-weight:bold');
 })();
