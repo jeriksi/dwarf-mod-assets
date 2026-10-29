@@ -1,1 +1,16 @@
-
+{
+    "legionary":  "https://github.com/jeriksi/dwarf-mod-assets/blob/main/dwarfs/ligeonary.png",
+    "archer":  "https://github.com/jeriksi/dwarf-mod-assets/blob/main/dwarfs/archer.png",
+    "mage":  "https://github.com/jeriksi/dwarf-mod-assets/blob/main/dwarfs/mage.png",
+    "priest":  "https://github.com/jeriksi/dwarf-mod-assets/blob/main/dwarfs/priest.png",
+    "rogue":  "https://github.com/jeriksi/dwarf-mod-assets/blob/main/dwarfs/rogue.png",
+    "necromancer":  "https://github.com/jeriksi/dwarf-mod-assets/blob/main/dwarfs/necromancer.png",
+    "paladin":  "https://github.com/jeriksi/dwarf-mod-assets/blob/main/dwarfs/paladin.png",
+    "recruit":  "https://github.com/jeriksi/dwarf-mod-assets/blob/main/dwarfs/recruit.png",
+    "pickaxe":  "https://github.com/jeriksi/dwarf-mod-assets/blob/main/dwarfs/pickaxe.png",
+    "fireartutzxc": "https://github.com/jeriksi/dwarf-mod-assets/blob/main/dwarfs/fireartutzxc.png",
+    "jeriksi":  "github.com/jeriksi/dwarf-mod-assets/blob/main/dwarfs/jeriksi.png",
+    "spector99th":  "https://github.com/jeriksi/dwarf-mod-assets/blob/main/dwarfs/spector99th.png",
+    "tsoivechen210662": "https://github.com/jeriksi/dwarf-mod-assets/blob/main/dwarfs/tsoivechen210662.png",
+}
+                    
