@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Multidonate Dwarf Mod
 // @namespace   http://tampermonkey.net/
-// @version     152.0
+// @version     156.0
 // @match       https://play.multidonate.ru/*
 // @run-at      document-start
 // @grant       none
@@ -13,7 +13,6 @@
     // ==========================================
     // ЧАСТЬ 1: КОНФИГУРАЦИЯ (ВСТАВЛЯЙ ССЫЛКИ И BASE64)
     // ==========================================
-
 
     // 1. Спрайты для КЛАССОВ (используются, если у игрока нет кастомного спрайта)
     const CLASS_SPRITES = {
@@ -43,24 +42,48 @@
         mine: "data:image/png;base64,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"
     };
 
-    // 4. Выделение игроков в шахте (цвет плашки)
-    const HIGHLIGHT_PLAYERS = {
-        'abebeboshka': { color: '#00ffff', bg: 'rgba(0, 255, 255, 0.2)' },
-        // 'ДругойНик': { color: '#ff0000', bg: 'rgba(255, 0, 0, 0.2)' },
+    // 4. НОВОЕ: Словарь Гильдий
+    // Формат: "Название" : { color: "#ЦВЕТ", members: ["Ник1", "Ник2"] }
+    const GUILDS = {
+        "Дворфийская Гильдия": {
+            color: "#ff9900", // Оранжевый
+            members: ["jeriksi", "3oda", "enigmo6249", "TsoiVechen210662", "spector99th", "xo.neontop", "timaxionit", "leshalapin", "fireartutzxc", "i_rekd_i", "vordaoluh", "great913", "coda0165_84965", "rav6r", "anantashesha3823", "domino_s67", "hOst1k"]
+        },
+        "Дискорд канал": {
+            color: "#00ffff", // Голубой
+            members: ["DFOLtEach", "Oppencrusa"]
+        }
     };
 
-    // 5. Спрайт кирки
+    // 5. Выделение игроков в шахте (цвет плашки)
+    const HIGHLIGHT_PLAYERS = {
+        // "Ник": { color: '#ff0000', bg: 'rgba(255, 0, 0, 0.2)' },
+    };
+
+    // 6. Спрайт кирки
     const PICKAXE_SPRITE_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAAAXNSR0IArs4c6QAAA6FJREFUeJzt3U9LVGEUx/ExJsHA1JmSFESZwpgIRmwjbaJN76AwaNurceXabdAiWkSb6AUMA8LgUCQZirUwMKaaQgpb1Poc4T493NH75/f97E4z1k1+nHN87m2qVAAAgKKRrC/AGx0d/Zv1NSQ5Pj7O3fcsjXNZXwCyRQDEEQBxhZ9noZ3h/sNHiV+/3Lpp6q+fd029f/jL1M+ePom5vNzvDHQAcQRAHAEQl+v5NAx+R5ibv5b4/pXbK6ZemB4zdW3mauLXd3tvTZ33nYEOII4AiCMA4kq/A3ix9xpidwZ/ruB3gk67Y+ra1EVT97a6pj7tnYAOII4AiCMA4uR2gFihnWH8wljSy5XGYtPUi80bpvbnDLH3HtLuCHQAcQRAHAEQxw6QUuheQ+jegp/5O9vvTH3vzq3E9/sdIXYnoAOIIwDiCIC4atYXUDR+5l+fu2Jen506b+rYmb+6+iDxz6/N2Hph+rGp19Y3zPWFdgI6gDgCII4AiOMcIMDP/NbSsnl9uTFu6qPBb1P3dj6a+qA/MHXsvYK0zyT6nYAOII4AiCMA4jgHcEIz35/Ne+3Nl6b2M9/b29lOrE/uCPYcwe8Ivvb8348OII4AiCMA4uTPAfxMvLtkZ+6lpp35obP9Vy+em7r/fZDqe1yfnEh8JtHvCP5egv+8g7X1DVPTAcQRAHEEQJzcOUBo5i80pk19dPjB1K+3/5ja/9yeduZ7od/v51Y3cUcIPV9ABxBHAMQRAHGl3wGiZ37k/fxhz/xY/v5+z+0E/vkCjw4gjgCIIwDiSrcDlH3mh/idoNPuJJ4T0AHEEQBxBEBcrufZ/4id+ft7h6Y+6H9zdbFmfkjoM47oAOIIgDgCIK5w8y008y/X7Wfvfun/MHXZZ77HDoBEBEAcARCX+3nHzB8u/m0gDAIgjgCIy93zAMz8s0UHEEcAxBEAcZnPQ2Z+tugA4giAOAIg7sznIzM/X+gA4giAOAIg7tTnJTM/3+gA4giAOAIgbujzk5lfLHQAcQRAHAEQl3qeMvOLjQ4gjgCIIwDioucrM79c6ADiCIA4AiAuOG+Z+eVGBxBHAMQRAHEn5i8zXwsdQBwBEEcAxI3wefva6ADiCIA4AiCuGvv/6jHzy4UOII4AiCMA4qqhmX/yrJ+ZXyZ0AHEEQBwBEFdtb743v9BanDe1/7mfmV8udABxBEAcARA3Up+cMM8DzNYnzBve7H5i5pcYHUAcARBHAAAAAAT9A4jEkOmiWPq5AAAAAElFTkSuQmCC";
 
-    // 6. НАСТРОЙКА ПОЛОЖЕНИЯ ПЛАШКИ С НИКОМ
+    // 7. Настройка положения плашки в шахте
     const NAMEPLATE_CONFIG = {
-        offsetX: 0,    // Сдвиг влево/вправо
-        offsetY: -65   // Сдвиг вверх/вниз (чем меньше число, тем выше)
+        offsetX: 0,
+        offsetY: -65
     };
 
     // ==========================================
-    // ЧАСТЬ 2: БАЗА КЛАССОВ И СЕТЬ
+    // ЧАСТЬ 2: ГЛУШИТЕЛЬ ОШИБОК И БАЗА КЛАССОВ
     // ==========================================
+    const IGNORE_STRINGS = ['не запеклось', 'Invalid encoded image data', 'citygl.js'];
+    ['log', 'warn', 'error', 'info', 'debug'].forEach(method => {
+        const original = console[method];
+        console[method] = function(...args) {
+            try {
+                const str = args.map(arg => (typeof arg === 'string' ? arg : (arg instanceof Error ? arg.message : String(arg)))).join(' ');
+                if (IGNORE_STRINGS.some(keyword => str.includes(keyword))) return;
+            } catch (e) {}
+            original.apply(console, args);
+        };
+    });
+
     const CLASSES = {
         legionary:   { key: 'legionary',   name: 'Легионер',   scale: 1, col: 0, row: 0 },
         archer:      { key: 'archer',      name: 'Лучник',     scale: 1, col: 0, row: 0 },
@@ -84,22 +107,12 @@
 
     const playerGearCache = {};
     let lastMyGear = null;
-    let myUsername = 'jeriksi'; // Твой ник
+    let myUsername = 'jeriksi';
     let gearCacheVersion = 0;
 
-    // Глушитель ошибок
-    const IGNORE_STRINGS = ['не запеклось', 'Invalid encoded image data', 'citygl.js'];
-    ['log', 'warn', 'error', 'info', 'debug'].forEach(method => {
-        const original = console[method];
-        console[method] = function(...args) {
-            try {
-                const str = args.map(arg => (typeof arg === 'string' ? arg : (arg instanceof Error ? arg.message : String(arg)))).join(' ');
-                if (IGNORE_STRINGS.some(keyword => str.includes(keyword))) return;
-            } catch (e) {}
-            original.apply(console, args);
-        };
-    });
-
+    // ==========================================
+    // ЧАСТЬ 3: СЕТЬ
+    // ==========================================
     function triggerGameRerender() {
         if (window.MDDoodle && typeof window.MDDoodle.update === 'function') window.MDDoodle.update();
         window.dispatchEvent(new Event('resize'));
@@ -162,16 +175,14 @@
     }
 
     // ==========================================
-    // ЧАСТЬ 3: ГОРОД (Blob)
+    // ЧАСТЬ 4: ГОРОД (Спрайты + Canvas)
     // ==========================================
     const OriginalBlob = window.Blob;
     window.Blob = new Proxy(OriginalBlob, {
         construct(target, args) {
             const [parts, options] = args;
-
             if (options && options.type === 'image/svg+xml' && parts && typeof parts[0] === 'string') {
                 const svgStr = parts[0];
-
                 if (svgStr.includes('cyq-') && svgStr.length > 18000 && svgStr.length < 30000) {
                     const match = svgStr.match(/<svg([^>]+)>([\s\S]*)<\/svg>/);
                     if (match) {
@@ -183,7 +194,6 @@
                         return new target([newSvg], options);
                     }
                 }
-
                 if (svgStr.includes('<svg') && svgStr.length > 12000 && svgStr.length < 18000) {
                     const match = svgStr.match(/<svg([^>]+)>([\s\S]*)<\/svg>/);
                     if (match) {
@@ -200,8 +210,58 @@
         }
     });
 
+    // Очистка ников в городе (Canvas)
+    const blockMethods = ['fill', 'stroke', 'fillRect', 'strokeRect', 'arc', 'ellipse', 'drawImage'];
+    blockMethods.forEach(method => {
+        const original = CanvasRenderingContext2D.prototype[method];
+        if (!original) return;
+        CanvasRenderingContext2D.prototype[method] = function(...args) {
+            if (this.canvas && this.canvas.height === 18) return;
+            return original.apply(this, args);
+        };
+    });
+
+    const originalFillText = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function(text, x, y, maxWidth) {
+        if (this.canvas && this.canvas.height === 18) {
+            if (/^\d+$/.test(text.trim())) return; // Игнорируем уровень
+
+            let textColor = '#ffffff';
+            let shadow = 'none';
+
+            // Ищем цвет гильдии для этого игрока
+            let guildColor = null;
+            for (const g in GUILDS) {
+                if (GUILDS[g].members.includes(text)) {
+                    guildColor = GUILDS[g].color;
+                    break;
+                }
+            }
+
+            if (text === myUsername) {
+                // Если это ТЫ
+                textColor = guildColor ? guildColor : '#ffeb3b'; // Цвет гильдии или желтый
+                shadow = textColor;
+                this.font = 'bold 14px sans-serif';
+                this.shadowBlur = 8;
+            } else if (guildColor) {
+                // Если это твой согильдиец
+                textColor = guildColor;
+                shadow = textColor;
+                this.shadowBlur = 6;
+            } else {
+                // Остальные
+                this.shadowBlur = 0;
+            }
+
+            this.fillStyle = textColor;
+            this.shadowColor = shadow;
+        }
+        return originalFillText.apply(this, arguments);
+    };
+
     // ==========================================
-    // ЧАСТЬ 4: UI 2D (Чат)
+    // ЧАСТЬ 5: UI 2D (Чат)
     // ==========================================
     function initDwarfEngine() {
         if (!window.MDDoodle || typeof window.MDDoodle.jDoodle !== 'function') {
@@ -253,7 +313,7 @@
     window.addEventListener('load', initDwarfEngine);
 
     // ==========================================
-    // ЧАСТЬ 5: МЕНЮ ПЕРСОНАЖА
+    // ЧАСТЬ 6: МЕНЮ ПЕРСОНАЖА
     // ==========================================
     function processCharacterTab() {
         document.querySelectorAll('svg.jl-doodle').forEach(svg => {
@@ -273,11 +333,11 @@
     }
 
     // ==========================================
-    // ЧАСТЬ 6: ШАХТА
+    // ЧАСТЬ 7: ШАХТА И ПЛАШКИ
     // ==========================================
     const FACING_CONFIG = { invertHorizontal: true, invertVertical: false, forceFlip: false, ignoreGameFlip: false };
 
-    const mineStyleId = 'dwarf-mine-v152-style';
+    const mineStyleId = 'dwarf-mine-v156-style';
     if (!document.getElementById(mineStyleId)) {
         const style = document.createElement('style');
         style.id = mineStyleId;
@@ -306,10 +366,12 @@
                 color: #fff; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
                 white-space: nowrap; pointer-events: none; z-index: 10;
                 padding: 2px 6px; border-radius: 4px;
+                transition: color 0.2s, text-shadow 0.2s;
             }
             .dwarf-nameplate.is-me {
-                color: #ffeb3b;
-                text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 6px #ffeb3b;
+                font-size: 16px;
+                font-weight: 900;
+                z-index: 20;
             }
         `;
         document.head.appendChild(style);
@@ -370,8 +432,6 @@
 
         const username = el.getAttribute('data-l') ? el.getAttribute('data-l').trim() : '';
 
-        // --- СКРЫВАЕМ ОРИГИНАЛЬНЫЕ ПЛАШКИ ИГРЫ ---
-        // Теперь мы скрываем и "Ты" (.mn-menm), и обычные ники (.mn-lbl, .mn-hl)
         document.querySelectorAll('.mn-lbl, .mn-hl, .mn-menm').forEach(lbl => {
             if (lbl.textContent === 'Ты' || lbl.textContent === username) {
                 lbl.style.display = 'none';
@@ -381,15 +441,35 @@
         if (nameplate) {
             if (username) {
                 nameplate.textContent = username;
-                if (username === myUsername) nameplate.classList.add('is-me');
-                else nameplate.classList.remove('is-me');
 
-                if (HIGHLIGHT_PLAYERS[username]) {
+                nameplate.style.color = '';
+                nameplate.style.backgroundColor = '';
+                nameplate.style.textShadow = '';
+                nameplate.classList.remove('is-me');
+
+                let guildColor = null;
+                for (const g in GUILDS) {
+                    if (GUILDS[g].members.includes(username)) {
+                        guildColor = GUILDS[g].color;
+                        break;
+                    }
+                }
+
+                if (username === myUsername) {
+                    nameplate.classList.add('is-me');
+                    if (guildColor) {
+                        nameplate.style.color = guildColor;
+                        nameplate.style.textShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 10px ${guildColor}, 0 0 20px ${guildColor}`;
+                    } else {
+                        nameplate.style.color = '#ffeb3b';
+                        nameplate.style.textShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 10px #ffeb3b, 0 0 20px #ffeb3b`;
+                    }
+                } else if (guildColor) {
+                    nameplate.style.color = guildColor;
+                    nameplate.style.textShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 6px ${guildColor}`;
+                } else if (HIGHLIGHT_PLAYERS[username]) {
                     nameplate.style.color = HIGHLIGHT_PLAYERS[username].color;
                     nameplate.style.backgroundColor = HIGHLIGHT_PLAYERS[username].bg;
-                } else {
-                    nameplate.style.color = '';
-                    nameplate.style.backgroundColor = '';
                 }
             } else {
                 nameplate.textContent = '';
@@ -454,5 +534,5 @@
     document.querySelectorAll('.mn-h').forEach(initMineHero);
     requestAnimationFrame(tickHeroes);
 
-    console.log('%c[DwarfMod v152.0] Оригинальные плашки "Ты" успешно скрыты.', 'color:#0f0;font-weight:bold');
+    console.log('%c[DwarfMod v156.0] Абсолютный финал. Город и шахта очищены и покрашены.', 'color:#0f0;font-weight:bold');
 })();
