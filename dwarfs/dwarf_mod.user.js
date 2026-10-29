@@ -1,8 +1,7 @@
 // ==UserScript==
-// @name        Multidonate Dwarf Mod v173 (Shapes & Classes)
+// @name        Multidonate Dwarf Mod
 // @namespace   http://tampermonkey.net/
 // @version     173.0
-// @description Полный мод. Вложенные текстуры (Класс + Форма), чистый город, шахта.
 // @match       https://play.multidonate.ru/*
 // @run-at      document-start
 // @grant       none
