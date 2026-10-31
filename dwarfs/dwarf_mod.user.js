@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name        Multidonate Dwarf Mod
+// @name        Multidonate Dwarf Mod (FINAL v222.5 - Mobile Optimized)
 // @namespace   http://tampermonkey.net/
-// @version     222.4
+// @version     222.5
 // @match       https://play.multidonate.ru/*
 // @run-at      document-start
 // @grant       none
@@ -13,7 +13,7 @@
     const _win = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
     const log = (tag, ...args) => console.log(`%c[${tag}]`, 'color: #00ffff; font-weight: bold;', ...args);
 
-    log('INIT', 'Dwarf Mod запущен!');
+    log('INIT', 'Скрипт v222.5 запущен!');
 
     // ==========================================
     // ЧАСТЬ 1: КОНФИГУРАЦИЯ
@@ -152,6 +152,7 @@
     // Кастомные цвета ников (только текст, без фона)
     const CUSTOM_COLORS  = {
         "Silz_1": { color: "#46c213", bg: 'rgba(70, 194, 19, 0.3)' },
+        "jeriksi": { color: "#f5e942", bg: 'rgba(245, 233, 66, 0.3)' },
         // "Ник": { color: '#ff0000', bg: 'rgba(255, 0, 0, 0.2)' },
     };
 
@@ -360,7 +361,6 @@
         const originalStrokeText = ContextClass.prototype.strokeText;
         if (!originalFillText) return;
 
-        // ❗ БЛОКИРУЕМ ФОН И СТАНДАРТНУЮ ОБВОДКУ
         const blockMethods = ['fill', 'stroke', 'fillRect', 'strokeRect', 'arc', 'ellipse', 'strokeText'];
         blockMethods.forEach(method => {
             const original = ContextClass.prototype[method];
@@ -376,11 +376,8 @@
             if (typeof text === 'string' && text.length > 0) {
                 const info = GUILD_LOOKUP[text.trim().toLowerCase()];
                 if (info && info.icons) {
-                    const mockMetrics = Object.create(metrics);
-                    Object.defineProperty(mockMetrics, 'width', {
-                        value: metrics.width + (info.icons.length * 18) + 6
-                    });
-                    return mockMetrics;
+                    // Оптимизация: возвращаем простой объект
+                    return { width: metrics.width + (info.icons.length * 18) + 6 };
                 }
             }
             return metrics;
@@ -411,7 +408,6 @@
 
                 this.font = `${currentWeight} ${currentSize}px ${window.FONT_CONFIG.family}`;
 
-                // Идеальное центрирование по холсту с учетом масштаба (DPR)
                 this.textAlign = 'center';
                 this.textBaseline = 'middle';
                 const scaleX = Math.abs((this.getTransform && this.getTransform().a) || 1);
@@ -419,7 +415,6 @@
                 let drawX = (this.canvas.width / scaleX) / 2;
                 let drawY = (this.canvas.height / scaleY) / 2;
 
-                // Гладкая обводка
                 this.lineWidth = 2.5;
                 this.lineJoin = 'round';
                 this.lineCap = 'round';
@@ -617,6 +612,7 @@
         if (el._lastDir) box.dataset.dir = el._lastDir;
     }
 
+    let tickCounter = 0;
     function tickHeroes() {
         const now = performance.now();
         document.querySelectorAll('.mn-h').forEach(el => {
@@ -625,21 +621,37 @@
                 applyHeroState(el);
             }
         });
-        if (document.querySelector('svg.jl-doodle')) processCharacterTab();
+
+        // ОПТИМИЗАЦИЯ: тяжелый поиск SVG делаем раз в 15 кадров (~4 раза в секунду)
+        tickCounter++;
+        if (tickCounter >= 15) {
+            if (document.querySelector('svg.jl-doodle')) processCharacterTab();
+            tickCounter = 0;
+        }
         requestAnimationFrame(tickHeroes);
     }
 
+    // ОПТИМИЗАЦИЯ: быстрый выход в MutationObserver
     const observer = new MutationObserver(mutations => {
-        mutations.forEach(m => m.addedNodes.forEach(node => {
-            if (node.nodeType !== 1) return;
-            if (node.classList?.contains('mn-h')) initMineHero(node);
-            node.querySelectorAll?.('.mn-h').forEach(initMineHero);
-            if (node.matches?.('svg.jl-doodle') || node.querySelector?.('svg.jl-doodle')) processCharacterTab();
-        }));
+        for (let i = 0; i < mutations.length; i++) {
+            const nodes = mutations[i].addedNodes;
+            for (let j = 0; j < nodes.length; j++) {
+                const node = nodes[j];
+                if (node.nodeType !== 1) continue;
+                if (node.classList?.contains('mn-h')) initMineHero(node);
+                if (node.querySelectorAll) {
+                    const heroes = node.querySelectorAll('.mn-h');
+                    if (heroes.length) heroes.forEach(initMineHero);
+                }
+                if (node.matches?.('svg.jl-doodle') || node.querySelector?.('svg.jl-doodle')) {
+                    processCharacterTab();
+                }
+            }
+        }
     });
     observer.observe(document.body, { childList: true, subtree: true });
     document.querySelectorAll('.mn-h').forEach(initMineHero);
     requestAnimationFrame(tickHeroes);
 
-    log('INIT', 'DwarfMod успешно запущен!');
+    log('INIT', 'DwarfMod v222.5 (Optimized) успешно запущен!');
 })();
