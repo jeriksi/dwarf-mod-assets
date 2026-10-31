@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Multidonate Dwarf Mod
 // @namespace   http://tampermonkey.net/
-// @version     179.0
+// @version     222.1
 // @match       https://play.multidonate.ru/*
 // @run-at      document-start
 // @grant       none
@@ -10,22 +10,25 @@
 (function() {
     'use strict';
 
+    const _win = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
+    const log = (tag, ...args) => console.log(`%c[${tag}]`, 'color: #00ffff; font-weight: bold;', ...args);
+
+    log('INIT', 'Dwarf Mod запущен!');
+
     // ==========================================
     // ЧАСТЬ 1: КОНФИГУРАЦИЯ
     // ==========================================
     window.FONT_CONFIG = {
-        family: 'system-ui, -apple-system, sans-serif',
+        family: 'system-ui, -apple-system, "Segoe UI Emoji", "Apple Color Emoji", sans-serif',
         size: 12,
         weight: 'bold'
     };
 
-    // Настройки ников в ШАХТЕ (HTML)
     const NAMEPLATE_CONFIG = { offsetY: -75, offsetX: 0 };
+    window.CITY_NAMEPLATE_CONFIG = { offsetY: 0, offsetX: 0 };
+    const FACING_CONFIG = { invertHorizontal: true, invertVertical: false, forceFlip: false, ignoreGameFlip: false };
 
-    // Настройки ников в ГОРОДЕ (Canvas)
-    window.CITY_NAMEPLATE_CONFIG = { offsetY: 0, offsetX: 3 };
-
-    // 1. Спрайты для КЛАССОВ и ФОРМ (Вложенная структура)
+    // спрайты персонажей
     const CLASS_SPRITES = {
         legionary: {
             default: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAAAXNSR0IArs4c6QAAC05JREFUeJztnWtQlOcVxxdYZJflJncElJugUsUbXoKxGKJWc7Fp00ZsM6ZTO+00fmhn2pmm6Zd2xpnMdNpOp+lMp5mM07FJTdO0o35ovUWgNEZWIoIGBUQuchOQ2y63hd1+zPyOZokBWeNz/t9+8+6+++5yeJ7znOec8wRZVFK+Ob5f0Bzfb04VHOgHUAVWagCGSw3AcD3U89M8CXP+D0qfxcXUBBu4o6sFPDjSCY6PjwG//tcr8vMeqt9cRwDDpQZguNQADJc10A8QAGHOj3SE42JGSiT4Rlst2G7nT3bseAd4fOLWrB9wPqUjgOFSAzBcagCGywQfAHP+to2rcfHp4jXga02XwG+8V+f35osWLQKnpqaCnU7nZ3vKAElHAMOlBmC41AAMlwk+ALR9y2LwkKsL/MZ7NX7fX1BQAH7mqafAdVevggsLC8FOp1PmGwR0b0BHAMOlBmC41AAM16PgA/jN4fv9L/aDY6KSwT//zZvg8HDuDRQXF4NjFy4Eu8fGwN97iZ938sxZcHNzM7i/vz+gPoGOAIZLDcBwqQEYrkfBB4CyFzM273ZPgq0hQ+COnj7wmjXcG1iakwO225gj2NvfD2662QKe9nGK37JlC/jYsWOWQEpHAMOlBmC41AAM1yPnA3x5bTzYbrODX/7ln/y+327n60NCQsBerxccG8M6AOkTTExMgPv76HMEWjoCGC41AMOlBmC4vog+ABbWG1Zm4eJj658E3+6/vzz99vZ2cGhoKFjO6U9s2waWPoJD7C2EiThCoKUjgOFSAzBcagCG64vgA2DOT46PxcUX9zwBvjPYDY6O5v797155CdzSfgPc2DoIdoRze/7d8g/F0zHWv27dOrDL5QJPjI9bHibpCGC41AAMlxqA4Xqo+tV8ijDJhgTTZhNiGYvv7rvj92byC7/201Kw28052+flO/ru0Mf48DJz/FpuT4O/umcPuE3EGc6eZc7gPR7xgUpHAMOlBmC41AAM18PoA2DODwriIzrsC8BfWpIGXpLI+vwfljIHr2eAOYHffOWP4B1F68E19fXg7zy3GeyZ8oCHRm6DK2tGwQ0328A+311lDeoDqOZPagCGSw3AcAViL8BvLV9KMmv3FizgnP/dXYy1b1rGev9jp1mf73GPgKuuMvZ/8cir4Lho9glsauecvv3l397rsT95vq8tB7+wm/kKv3q91e/751s6AhguNQDDpQZguOZjzckcPtEzp3A9191/e+cdsC0sDNzZxZ4+Un/+8bfBHjdz+MY8dEF+cvgffu/3s/3PgF/7ywm/r38AeqB/Ix0BDJcagOFSAzBc8x4HkDlyMo8+LY2x/Y4O9uO3htBm//D9F8Bf37wMXNfKdfz75xkHyEtKBDf1snavpo779/ervLw88KqVK8Gjo9wr6O7pAVdXV890juGsfAQdAQyXGoDhUgMwXPMeB1gp5kCbqJWTffTsodwLePXpx8D7t4o5NWgKXN7Cev36W8wHsFvYQyg6inGHA79+y3I/ys3N9cuyjiA6OhqckpQEzs7iXsK/jh8Hnzp9Wj7Cff1NdQQwXGoAhksNwHDNexzg+vXr4MhY9vRJz8kG54gePC8WFoGtA6wD6Bvluj9SrLMfL1gCvtrG1x94jb2Dt+5g7WHFqffBsodQqJU/qdzLkK8fGGQtYnwcax9HR93gvd94HnwPH+C+pCOA4VIDMFxqAIbrQcQBsNDdvXs3Ln5QdQG8sWgjOCyM6/6wUM6hb257HBwZxJy/xh7GEaJi2KPnR+/+F3z03EfgFet4JtCiFOYoyjqF0yf+w9eLcwTl3seTJSXghsZGsOxBJHMi60WdgsPhAI+M8PewzPA31hHAcKkBGC41AMM1Fz4A5vwkEcueFiZWsp3r6oEBroMrzpaBs5Yzln7to1pwchzjCL0iLjAt8g28d9fi+VVaBusOMrIzwbFx7EF0o4k+SFvjTXCMiGvIPoSZmbx/mIgj9Ilew1VVVWB5drHMp7CIv7mOAIZLDcBwqQEYrjn3AaSKirlujxFz5uWaOvCd271g7xR77oyLc/qkbOHs9x+bmAAeET7HyNAwOD6FPkzuCub0OSvPg5cXMB+h+eMGcHp6OvjgwYPgt99ivkFzDc8unpxifkPWqlVg+eNfvHjRMoPUB1B9IjUAw6UGYLjm3AfYt28fLp4pOwdOSmes/GY958zIhcyRcw1yjs7IZb5AnfMSODufdQHBoq9gWho//9y/z1j8qeQrPH+g/RbX1e4BPl9kJPsLZGfzeavFHD0u6gASxfNaxN5D3zR9onCx7ndERIBl/oWUjgCGSw3AcKkBGK45zwk8efIkWMa6+7qZgxcVy7iAI4pz6LSIA+SKnEGXizlza1dzndzSzjODrCInz+ZgvsD6zexf4BNeUoFY9192ct0u8wXkOYGjYs6PF3M+n85i8QpOEq/vFLF+b0oKOEVwl+ivoCOA4VIDMFxqAIZrzn2AfnF27kxKSGbsfXiSvXdHXcxxu93H+48Mstbv8pWPwcEh0sYZPZdxgl7RH8A3zVnY5WadwZjYm1i7di34gzOMM8g5nx6IxRIqfAiPuL5AXE8VPk2PyAnMyc8Hqw+ggtQADJcagOH6PD4AJtFnV2fgYpyDOWwNnWLOnuC6vraT62Kbjfv5i7OYk5eeynVtvZjzizZvAJeVV4Lz85hjWFvFvYRp4YMsz2fv36pKnhvo89KnkDmRPnFOoFzn+8ScLvf3ZfaD9AGsIsfRI2ohExPZA0lKRwDDpQZguNQADNes4wCZSYzlh4p1aVQfc/DcE8xxkxof56znFXNaVzd9Bqma2itgGZtvE7HzILEuHx7m/v75/3HOj4xgLZ57mLV/UyKHT87xskeQ9AmCxett4vVTgulR3e1DhIfLSIP4PL9XVY+81AAMlxqA4Zq1D9DcxXV+5ALesneU6+qaTvoEsjewXLeOjHG/Pz4uDpycxpy4nCzW1rW2sdfv0mz23XNWMM8/PpY9evZ+ay+4oqICfKuV95d7A7Z41i5OinwAh5jz5X+kTNqUPsOEYKudcRRZSyilI4DhUgMwXGoAhmvWPkBZI+e0tHjm9NW3s15fStazNzSwTiAxhT5B43X21PGInjqS+0WtYbBPZtlRmzZt4ueJHj6yHr9E9PyRPsKOXbvARw4fBst+BaxkvNsHkHN+j6gTyFnGughZpyClI4DhUgMwXGoAhuvz+ACYlkbGJjCJ1bfLWYrauXMnWNYRLF26FNwgagdlbDs2gXGBE//kuX52sS7ubGWdgKzfr61lD6KmpiZwQQH7CLa0tIBnOgMpLSMD3CbePy32JmQO4bC4v0OctVy4gfkQ588zziGlI4DhUgMwXGoAhmvezwyaSQdK2Dv471XM+ZP17/ki733jRr6/spI5gVu3bgUfOXIELGP5RUU8n+DSJeYQrhI9e8rLy8HyfADZO7m6uhrcLHwOh5jzZY+g557n+QFlZWXgU6dOWfxJRwDDpQZguNQADNd8+ABS8AmK87jut7KdgGVxAnMOjzvpE/SLfvyZ4py90tJS8KFDh8Dy3EKPh/kLsv//XXsFF5zggSC6PK2trX4/T+4lyF7BK1asAN+4wbOP5XkER48eBQ8NDel5AapPlxqA4VIDMFwB9wHyRT6AzItfLOoOYmx0EoZE3cC1ngHwHTdr81xinT85Oen3N4iIiMDzut3MUcyMYQ5hRro4BzGKexFvX7gKlmcCTYv9/ViRoyj39+VZyx6PR88OVn12qQEYLjUAwxVwHyAnifvZU17OgTYRGAi3MrbuHqMP0CH6/7s8ssvOrL+z372NCNEXMTU6CuywM59hVJ6HMMXntQbz+zb1dMuPnNX30RHAcKkBGC41AMP1f0unPqmnBxpxAAAAAElFTkSuQmCC",
@@ -115,54 +118,68 @@
         'strannik_144': 'data:image/png;base64,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',
     };
 
-
-    // 3. Спрайты для НПС (Гром и Кремень)
+    //  Спрайты для НПС
     const NPC_SPRITES = {
         city: "data:image/png;base64,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",
         mine: "data:image/png;base64,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"
     };
 
-    // 4. НОВОЕ: Словарь Гильдий
+
+    // Спрайт кирки
+    const PICKAXE_SPRITE_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAArtJREFUeJzt289PlEccx/HXAgtLYG1KLEGgto00MT1IYnqx1YPpH+3RQzFpDMRkEdEDXhYTOPDD0ggukKeHnWlEga7KMjx55n3ZfZ6ZZ/aT73zmx/OdLJlqU+tDm8UV0NAzAyl//CpwkdEv4PvZ2RM3JyYmTlzXh4ZA+80bsLm52Q8tPZMd8Bl1zx3bv9+7B+rDw2B2Zga0nj8Ha2tr3fLggN23b79Ew4VTeQcM9VCngF/v3gXfXb8OVl++7JYOdGP4z7t34MdY/uoVaLVaZ7WbtOcj2QG9VqzX62BgcBAcHByAWnDAT/PzYHFpCayvr8dHr0RPn0XlHdBL7xQwMz0NOoeHYDg4otFogLXXr7+k7eRU3gHnzQEF/Dw3B9phTDdGRsAPN2+ivD0fyQ44q2BsbAyMj4+DPx4+BN+Gvf3CkydgZ2enrwL7TXbAKfcKmLt1C4yOjoJG+PxzYQG02+2PnyvV2I9U3gEf9loB83fugOa1a+DG1BRYefECbG1tgaOwH9ja3j6trdJQeQf8NwfEWT8yNTkJOp0OWF1dBb+F9/7d3V2ccEApyQ4Qxv4vt2+D6bDnj7P+40ePQFF0E0LDIeNzdHR0qUL7RXZA/BJ3fFNh1l9cXMSnYzw6YHCo51TClSY74MH9+2AyzPpxbC89exbrxPX9RFa48/79ZejrO9kBh2Gd/ybs/P56+vTcB+JqcHx83F9ll0R2QJz1l1dWQGt5OZadurdvhtXi7729vou7DLID4pgfCbm+/6XWNcZgOB8oO9kBGxsbH987970+rgK1Wilf/z8hO8BXZnKazSbYK+mqUHkH5ACkFpCaHIDUAlKTA5BaQGpyAFILSE0OQGoBqckBSC0gNTkAqQWk5rMP+LbDWeH+/j7KmweIVN4BF/GPkVInByvvgK855C91z0cq74BMJlNt/gWXuZ5F2LJzOwAAAABJRU5ErkJggg==";
+
+
+    // гильдии и цвета
     const GUILDS = {
         "Дворфийская Гильдия": {
-            color: "#ff9900", // Оранжевый
             icon: "⛏️",
             members: ["jeriksi", "3oda", "enigmo6249", "TsoiVechen210662", "spector99th", "xo.neontop", "timaxionit", "leshalapin", "fireartutzxc", "i_rekd_i", "vordaoluh", "great913", "coda0165_84965", "rav6r", "Ananta_Shesha", "domino_s67", "hOst1k"]
         },
         "Дискорд канал": {
-            color: "#00ffff", // Голубой
             icon: "✅",
             members: ["DFOLtEach", "Oppencrusa"]
+        },
+        "Злые котики": {
+            icon: "😺",
+            members: ["jeriksi"]
         }
     };
 
-    // 5. Выделение игроков в шахте (цвет плашки)
+    // Кастомные цвета ников (только текст, без фона)
     const CUSTOM_COLORS  = {
-    "Silz_1": { color: "#46c213", bg: 'rgba(70, 194, 19, 0.3)' },
-    // "Ник": { color: '#ff0000', bg: 'rgba(255, 0, 0, 0.2)' },
+        "Silz_1": { color: "#46c213", bg: 'rgba(70, 194, 19, 0.3)' },
+        // "Ник": { color: '#ff0000', bg: 'rgba(255, 0, 0, 0.2)' },
+    };
+    const GUILD_LOOKUP = {};
+    for (const g in GUILDS) {
+        for (const member of GUILDS[g].members) {
+            const lower = member.toLowerCase();
+            if (!GUILD_LOOKUP[lower]) GUILD_LOOKUP[lower] = { icons: '', color: '#ffffff' };
+            GUILD_LOOKUP[lower].icons += GUILDS[g].icon || '';
+        }
+    }
+    for (const user in CUSTOM_COLORS) {
+        const lower = user.toLowerCase();
+        if (!GUILD_LOOKUP[lower]) GUILD_LOOKUP[lower] = { icons: '', color: '#ffffff' };
+        const custom = CUSTOM_COLORS[user];
+        GUILD_LOOKUP[lower].color = (typeof custom === 'string') ? custom : (custom.color || '#ffffff');
+    }
+    window.GUILD_LOOKUP = GUILD_LOOKUP;
+
+    // ==========================================
+    // ЧАСТЬ 2: ТЕХНИЧЕСКАЯ ЛОГИКА
+    // ==========================================
+    const CLASSES = { legionary:{key:'legionary'}, archer:{key:'archer'}, mage:{key:'mage'}, priest:{key:'priest'}, rogue:{key:'rogue'}, necromancer:{key:'necromancer'}, paladin:{key:'paladin'}, recruit:{key:'recruit'} };
+    const WEAPON_MAP = {
+        necromancer: ['nec_bone_wand','nec_old_book','nec_skull_staff','nec_grimoire','nec_crypt_staff','nec_black_book','orcus_scepter','skullstaff'],
+        paladin:     ['pal_novice_mace','pal_mace','pal_war_hammer','pal_sun_mace','pal_guard_hammer','sol_hammer','mace','flanged_mace','smith_hammer','warhammer','champion_mace','holymace'],
+        priest:      ['censer','copper_censer','silver_censer','gold_censer','pontifex_censer','vesta_breath'],
+        mage:        ['staff','walking_staff','oak_staff','ember_staff','storm_staff','storm_heart','crook','druid_crook','elder_crook'],
+        rogue:       ['dagger','stiletto','assassin_dagger','rog_shiv','rog_dirk','rog_kris','rog_twin','rog_viper','mercury_fang','kris'],
+        archer:      ['bow','hunting_bow','composite_bow','yew_bow','longbow','sagittarius_bow','apollo_bow','diana_bow','sling','rogatka'],
+        legionary:   ['sword','gladius','rusty_sword','spatha','iron_sword','sharp_gladius','legate_gladius','praetorian_spatha','aquila_blade','hatchet','bearded_axe','war_axe','wood_spear','pilum','triarius_hasta','retiarius_trident','wood_club','barbarian_club','pitchfork']
     };
 
-    // Делаем переменные видимыми внутри Canvas хуков
-    window.GUILDS = GUILDS;
-    window.CUSTOM_COLORS = CUSTOM_COLORS;
-
-    // 6. Спрайт кирки
-    const PICKAXE_SPRITE_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAArtJREFUeJzt289PlEccx/HXAgtLYG1KLEGgto00MT1IYnqx1YPpH+3RQzFpDMRkEdEDXhYTOPDD0ggukKeHnWlEga7KMjx55n3ZfZ6ZZ/aT73zmx/OdLJlqU+tDm8UV0NAzAyl//CpwkdEv4PvZ2RM3JyYmTlzXh4ZA+80bsLm52Q8tPZMd8Bl1zx3bv9+7B+rDw2B2Zga0nj8Ha2tr3fLggN23b79Ew4VTeQcM9VCngF/v3gXfXb8OVl++7JYOdGP4z7t34MdY/uoVaLVaZ7WbtOcj2QG9VqzX62BgcBAcHByAWnDAT/PzYHFpCayvr8dHr0RPn0XlHdBL7xQwMz0NOoeHYDg4otFogLXXr7+k7eRU3gHnzQEF/Dw3B9phTDdGRsAPN2+ivD0fyQ44q2BsbAyMj4+DPx4+BN+Gvf3CkydgZ2enrwL7TXbAKfcKmLt1C4yOjoJG+PxzYQG02+2PnyvV2I9U3gEf9loB83fugOa1a+DG1BRYefECbG1tgaOwH9ja3j6trdJQeQf8NwfEWT8yNTkJOp0OWF1dBb+F9/7d3V2ccEApyQ4Qxv4vt2+D6bDnj7P+40ePQFF0E0LDIeNzdHR0qUL7RXZA/BJ3fFNh1l9cXMSnYzw6YHCo51TClSY74MH9+2AyzPpxbC89exbrxPX9RFa48/79ZejrO9kBh2Gd/ybs/P56+vTcB+JqcHx83F9ll0R2QJz1l1dWQGt5OZadurdvhtXi7729vou7DLID4pgfCbm+/6XWNcZgOB8oO9kBGxsbH987970+rgK1Wilf/z8hO8BXZnKazSbYK+mqUHkH5ACkFpCaHIDUAlKTA5BaQGpyAFILSE0OQGoBqckBSC0gNTkAqQWk5rMP+LbDWeH+/j7KmweIVN4BF/GPkVInByvvgK855C91z0cq74BMJlNt/gWXuZ5F2LJzOwAAAABJRU5ErkJggg==";
-
-    function getPlayerSprite(username) {
-        if (!username || typeof username !== 'string') return null;
-        const clean = username.trim();
-        if (PLAYER_SPRITES[clean]) return PLAYER_SPRITES[clean];
-        const lower = clean.toLowerCase();
-        for (const k in PLAYER_SPRITES) {
-            if (k.toLowerCase() === lower) return PLAYER_SPRITES[k];
-        }
-        return null;
-    }
-
-    // ==========================================
-    // ЧАСТЬ 2: ГЛУШИТЕЛЬ + КЛАССЫ
-    // ==========================================
     const IGNORE_STRINGS = ['не запеклось', 'Invalid encoded image data', 'citygl.js'];
     ['log', 'warn', 'error', 'info', 'debug'].forEach(method => {
         const original = console[method];
@@ -175,39 +192,25 @@
         };
     });
 
-    const CLASSES = {
-        legionary:   { key: 'legionary',   name: 'Легионер',   scale: 1, col: 0, row: 0 },
-        archer:      { key: 'archer',      name: 'Лучник',     scale: 1, col: 0, row: 0 },
-        mage:        { key: 'mage',        name: 'Маг',        scale: 1, col: 0, row: 0 },
-        priest:      { key: 'priest',      name: 'Жрец',       scale: 1, col: 0, row: 0 },
-        rogue:       { key: 'rogue',       name: 'Разбойник',  scale: 1, col: 0, row: 0 },
-        necromancer: { key: 'necromancer', name: 'Некромант',  scale: 1, col: 0, row: 0 },
-        paladin:     { key: 'paladin',     name: 'Паладин',    scale: 1, col: 0, row: 0 },
-        recruit:     { key: 'recruit',     name: 'Новобранец', scale: 1, col: 0, row: 0 }
-    };
-
-    const WEAPON_MAP = {
-        necromancer: ['nec_bone_wand', 'nec_old_book', 'nec_skull_staff', 'nec_grimoire', 'nec_crypt_staff', 'nec_black_book', 'orcus_scepter'],
-        paladin: ['pal_novice_mace', 'pal_mace', 'pal_war_hammer', 'pal_sun_mace', 'pal_guard_hammer', 'sol_hammer', 'mace', 'flanged_mace', 'smith_hammer', 'warhammer', 'champion_mace'],
-        priest: ['censer', 'copper_censer', 'silver_censer', 'gold_censer', 'pontifex_censer', 'vesta_breath'],
-        mage: ['staff', 'walking_staff', 'oak_staff', 'ember_staff', 'storm_staff', 'storm_heart', 'crook', 'druid_crook', 'elder_crook'],
-        rogue: ['dagger', 'stiletto', 'assassin_dagger', 'rog_shiv', 'rog_dirk', 'rog_kris', 'rog_twin', 'rog_viper', 'mercury_fang'],
-        archer: ['bow', 'hunting_bow', 'composite_bow', 'yew_bow', 'longbow', 'sagittarius_bow', 'apollo_bow', 'diana_bow'],
-        legionary: ['sword', 'gladius', 'rusty_sword', 'spatha', 'iron_sword', 'sharp_gladius', 'legate_gladius', 'praetorian_spatha', 'aquila_blade', 'hatchet', 'bearded_axe', 'war_axe', 'wood_spear', 'pilum', 'triarius_hasta', 'retiarius_trident', 'wood_club', 'barbarian_club', 'pitchfork']
-    };
-
     const playerGearCache = {};
-    let lastMyGear = null;
-    window.myUsername = null;
-    window.myLook = null;
-    let gearCacheVersion = 0;
-    let cityPlayersQueue = [];
-    let dwarf_render_me = false;
 
-    function triggerGameRerender() {
-        if (window.MDDoodle && typeof window.MDDoodle.update === 'function') window.MDDoodle.update();
-        window.dispatchEvent(new Event('resize'));
-        processCharacterTab();
+    // ФИКС: Кэш экипировки при перезагрузке
+    let lastMyGear = null;
+    try { lastMyGear = JSON.parse(localStorage.getItem('md_myGear') || 'null'); } catch (e) {}
+
+    let gearCacheVersion = 0;
+    window.myUsername = localStorage.getItem('md_myUsername') || null;
+
+    window.myLook = null;
+    try { window.myLook = JSON.parse(localStorage.getItem('md_myLook') || 'null'); } catch (e) {}
+
+    function getPlayerSprite(username) {
+        if (!username || typeof username !== 'string') return null;
+        const clean = username.trim();
+        if (PLAYER_SPRITES[clean]) return PLAYER_SPRITES[clean];
+        const lower = clean.toLowerCase();
+        for (const k in PLAYER_SPRITES) { if (k.toLowerCase() === lower) return PLAYER_SPRITES[k]; }
+        return null;
     }
 
     function detectPlayerClass(gear, role) {
@@ -217,227 +220,181 @@
         for (const [classKey, idList] of Object.entries(WEAPON_MAP)) {
             if (idList.includes(w)) return CLASSES[classKey];
         }
-        if (w.includes('nec_') || w.includes('skull') || w.includes('skelet') || w.includes('orcus')) return CLASSES.necromancer;
-        if (w.includes('pal_') || w.includes('sol_') || w.includes('hammer') || w.includes('mace')) return CLASSES.paladin;
-        if (w.includes('censer') || w.includes('vesta')) return CLASSES.priest;
-        if (w.includes('staff') || w.includes('crook') || w.includes('grimoire') || w.includes('book')) return CLASSES.mage;
-        if (w.includes('rog_') || w.includes('dagger') || w.includes('fang')) return CLASSES.rogue;
-        if (w.includes('bow')) return CLASSES.archer;
-        if (w.includes('sword') || w.includes('gladius') || w.includes('axe') || w.includes('spear')) return CLASSES.legionary;
         return CLASSES.recruit;
     }
 
-    // ==========================================
-    // ЧАСТЬ 3: fetch ХУК
-    // ==========================================
-    const originalFetch = window.fetch;
-    window.fetch = async function(...args) {
-        const url = args[0];
-        const response = await originalFetch.apply(this, args);
-        try {
-            if (typeof url === 'string') {
-                const clone = response.clone();
-                let data = await clone.json();
+    // ФИКС: Мульти-ретрай перерисовки
+    let gearSetPending = false;
+    let jdoodleWrapped = false;
 
-                if (url.includes('/api/me') && data?.user?.login) {
+    function triggerGameRerender() {
+        const doUpdate = () => {
+            try {
+                if (_win.MDDoodle && typeof _win.MDDoodle.update === 'function') _win.MDDoodle.update();
+            } catch (e) {}
+            window.dispatchEvent(new Event('resize'));
+            processCharacterTab();
+        };
+        doUpdate();
+        [100, 500, 1500, 3000, 6000].forEach(ms => setTimeout(doUpdate, ms));
+    }
+
+    // ==========================================
+    // ЧАСТЬ 3: API ХУК
+    // ==========================================
+    const origFetch = _win.fetch;
+    _win.fetch = async function (...args) {
+        const url = typeof args[0] === 'string' ? args[0] : '';
+        const res = await origFetch.apply(this, args);
+        try {
+            if (url.includes('/api/me') || url.includes('/api/equip') || url.includes('/api/city/enter') || url.includes('/api/city/go')) {
+                const data = await res.clone().json();
+
+                if (data?.user?.login) {
                     window.myUsername = data.user.login;
-                    if (data?.hero?.look) window.myLook = data.hero.look;
-                    if (data?.hero?.gear) {
-                        lastMyGear = data.hero.gear;
-                        playerGearCache[window.myUsername] = data.hero.gear;
-                    }
+                    localStorage.setItem('md_myUsername', window.myUsername);
                 }
-                if (url.includes('/api/equip')) {
-                    const gear = data?.hero?.gear;
-                    if (gear !== undefined) {
-                        lastMyGear = gear;
-                        if (data?.hero?.look) window.myLook = data.hero.look;
-                        if (window.myUsername) playerGearCache[window.myUsername] = gear;
+                if (data?.me?.n || data?.me?.login) {
+                    window.myUsername = data.me.n || data.me.login;
+                    localStorage.setItem('md_myUsername', window.myUsername);
+                }
+
+                const hero = data?.hero || data?.me;
+                if (hero) {
+                    if (hero.look) {
+                        window.myLook = hero.look;
+                        try { localStorage.setItem('md_myLook', JSON.stringify(hero.look)); } catch (e) {}
+                    }
+                    if (hero.gear) {
+                        lastMyGear = hero.gear;
+                        try { localStorage.setItem('md_myGear', JSON.stringify(hero.gear)); } catch (e) {}
+                        if (window.myUsername) playerGearCache[window.myUsername] = hero.gear;
                         gearCacheVersion++;
-                        dwarf_render_me = true;
-                        if (window.myUsername) {
-                            const myIdx = cityPlayersQueue.findIndex(p => p.who === window.myUsername);
-                            if (myIdx !== -1 && window.myLook) cityPlayersQueue[myIdx].look = window.myLook;
+
+                        if (jdoodleWrapped) {
+                            setTimeout(triggerGameRerender, 50);
+                        } else {
+                            gearSetPending = true;
                         }
-                        setTimeout(triggerGameRerender, 50);
                     }
                 }
+
                 if (url.includes('/api/city/enter') || url.includes('/api/city/go')) {
-                    if (data?.me?.gear) {
-                        lastMyGear = data.me.gear;
-                        if (data?.me?.look) window.myLook = data.me.look;
-                        if (window.myUsername) playerGearCache[window.myUsername] = data.me.gear;
+                    if (data?.a && Array.isArray(data.a)) {
+                        data.a.forEach(p => {
+                            const who = p.n || p.l;
+                            if (who && p.g) playerGearCache[who] = p.g;
+                        });
                     }
-                    if (data.a && Array.isArray(data.a)) {
-                        cityPlayersQueue = data.a.map(p => ({ who: p.who || p.name || '', look: p.look || null }));
-                    }
-                    setTimeout(triggerGameRerender, 50);
+                    if (jdoodleWrapped) setTimeout(triggerGameRerender, 50);
                 }
-                return response;
             }
         } catch (e) {}
-        return response;
+        return res;
     };
 
-    const OriginalXHR = window.XMLHttpRequest;
-    if (OriginalXHR) {
-        const openXHR = OriginalXHR.prototype.open;
-        const sendXHR = OriginalXHR.prototype.send;
-        OriginalXHR.prototype.open = function(method, url, ...rest) {
-            this._dwarfUrl = url;
-            return openXHR.call(this, method, url, ...rest);
-        };
-        OriginalXHR.prototype.send = function(...args) {
-            this.addEventListener('load', function() {
-                try {
-                    const url = String(this._dwarfUrl || '');
-                    if (!this.responseText) return;
-
-                    if (url.includes('/api/city/enter') || url.includes('/api/city/go')) {
-                        const data = JSON.parse(this.responseText);
-                        if (data?.me?.gear) {
-                            lastMyGear = data.me.gear;
-                            if (data?.me?.look) window.myLook = data.me.look;
-                            if (window.myUsername) playerGearCache[window.myUsername] = data.me.gear;
-                        }
-                        if (data?.a && Array.isArray(data.a)) {
-                            cityPlayersQueue = data.a.map(p => ({ who: p.who || p.name || '', look: p.look || null }));
-                        }
-                        setTimeout(triggerGameRerender, 50);
-                    }
-                    if (url.includes('/api/me')) {
-                        const data = JSON.parse(this.responseText);
-                        if (data?.user?.login) window.myUsername = data.user.login;
-                        if (data?.hero?.look) window.myLook = data.hero.look;
-                        if (data?.hero?.gear) {
-                            lastMyGear = data.hero.gear;
-                            if (window.myUsername) playerGearCache[window.myUsername] = data.hero.gear;
-                        }
-                    }
-                    if (url.includes('/api/equip')) {
-                        const data = JSON.parse(this.responseText);
-                        if (data?.hero?.gear !== undefined) {
-                            lastMyGear = data.hero.gear;
-                            if (data?.hero?.look) window.myLook = data.hero.look;
-                            if (window.myUsername) playerGearCache[window.myUsername] = data.hero.gear;
-                            gearCacheVersion++;
-                            dwarf_render_me = true;
-                            if (window.myUsername) {
-                                const myIdx = cityPlayersQueue.findIndex(p => p.who === window.myUsername);
-                                if (myIdx !== -1 && window.myLook) cityPlayersQueue[myIdx].look = window.myLook;
-                            }
-                            setTimeout(triggerGameRerender, 50);
-                        }
-                    }
-                } catch (e) {}
-            });
-            return sendXHR.apply(this, args);
-        };
-    }
-
     // ==========================================
-    // ЧАСТЬ 4: Blob-прокси
+    // ЧАСТЬ 4: ПЕРЕХВАТ JDOODLE (SETTER + RAF)
     // ==========================================
-    function getSvgColors(svgStr) {
-        return svgStr.match(/#[0-9a-fA-F]{3,6}/g) || [];
-    }
+    function wrapJDoodle() {
+        if (jdoodleWrapped) return true;
+        if (!_win.MDDoodle || typeof _win.MDDoodle.jDoodle !== 'function') return false;
 
-    function isMyBlob(svgStr) {
-        if (!window.myLook) return false;
-        const hexes = getSvgColors(svgStr);
-        if (hexes.length === 0) return false;
-        const myColors = [window.myLook.skin, window.myLook.hair, window.myLook.shirt, window.myLook.pants].filter(Boolean);
-        if (myColors.length === 0) return false;
-        let matches = 0;
-        for (const c of myColors) {
-            if (hexes.includes(c)) matches++;
-        }
-        return matches >= 2;
-    }
+        jdoodleWrapped = true;
+        const originalJDoodle = _win.MDDoodle.jDoodle;
 
-    function matchBlobToPlayer(svgStr) {
-        if (!cityPlayersQueue.length) return null;
-        const hexes = getSvgColors(svgStr);
-        if (hexes.length === 0) return null;
+        _win.MDDoodle.jDoodle = function(seed, mood, uniform, extra, look) {
+            const who = extra?.who;
 
-        for (let i = 0; i < cityPlayersQueue.length; i++) {
-            const p = cityPlayersQueue[i];
-            if (!p.look) continue;
-            const colors = [p.look.skin, p.look.hair, p.look.shirt, p.look.pants].filter(Boolean);
-            if (colors.length === 0) continue;
-
-            let matches = 0;
-            for (const c of colors) {
-                if (hexes.includes(c)) matches++;
+            if (who && who.startsWith('npc:')) {
+                const isInMine = !!document.querySelector('.mn-h');
+                const npcSprite = isInMine ? NPC_SPRITES.mine : NPC_SPRITES.city;
+                if (npcSprite && npcSprite.trim() !== "") {
+                    return `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><image href="${npcSprite}" width="32" height="32" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
+                }
+                return originalJDoodle.apply(this, arguments);
             }
-            if (matches >= 2) {
-                return cityPlayersQueue.splice(i, 1)[0];
+
+            if (document.querySelector('.mn-h')) return originalJDoodle.apply(this, arguments);
+
+            if (who) {
+                let gear = (who === window.myUsername) ? (lastMyGear || extra.gear) : (extra.gear || playerGearCache[who] || {});
+                if (extra.gear) playerGearCache[who] = extra.gear;
+
+                const role = extra.role || (look && look.role);
+                const playerClass = detectPlayerClass(gear, role);
+                const shape = look && look.shape;
+
+                let spriteUrl = getPlayerSprite(who);
+                if (!spriteUrl) {
+                    const classData = CLASS_SPRITES[playerClass.key] || CLASS_SPRITES.recruit;
+                    spriteUrl = (shape && classData[shape]) ? classData[shape] : classData.default;
+                }
+
+                if (spriteUrl && spriteUrl.trim() !== "" && !spriteUrl.startsWith("PASTE_") && !spriteUrl.startsWith("/*")) {
+                    return `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><image href="${spriteUrl}" width="32" height="32" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
+                }
+                return originalJDoodle.apply(this, arguments);
             }
-        }
-        return null;
-    }
 
-    const OriginalBlob = window.Blob;
-    window.Blob = new Proxy(OriginalBlob, {
-        construct(target, args) {
-            const [parts, options] = args;
-            if (options && options.type === 'image/svg+xml' && parts && typeof parts[0] === 'string') {
-                const svgStr = parts[0];
+            if (!who) {
+                let playerClass = CLASSES.recruit;
+                if (lastMyGear) playerClass = detectPlayerClass(lastMyGear);
 
-                if (!svgStr.includes('tilelow') && !svgStr.includes('mnbW') &&
-                    svgStr.length > 12000 && svgStr.length < 18000) {
+                let spriteUrl = getPlayerSprite(window.myUsername);
+                if (!spriteUrl) {
+                    const classData = CLASS_SPRITES[playerClass.key] || CLASS_SPRITES.recruit;
+                    const shape = look?.shape || window.myLook?.shape;
+                    spriteUrl = (shape && classData[shape]) ? classData[shape] : classData.default;
+                }
 
-                    const match = svgStr.match(/<svg([^>]+)>([\s\S]*)<\/svg>/);
-                    if (match) {
-                        let isMe = isMyBlob(svgStr) || (dwarf_render_me && !getSvgColors(svgStr).length);
-
-                        if (isMe) {
-                            dwarf_render_me = false;
-                            const myUnique = getPlayerSprite(window.myUsername);
-                            if (myUnique) {
-                                const newSvg = `<svg ${match[1]} xmlns:xlink="http://www.w3.org/1999/xlink"><g opacity="0">${match[2]}</g><image href="${myUnique}" xlink:href="${myUnique}" x="0" y="0" width="100%" height="100%" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
-                                return new target([newSvg], options);
-                            }
-
-                            const playerClass = detectPlayerClass(lastMyGear);
-                            const shape = window.myLook?.shape;
-                            const classData = CLASS_SPRITES[playerClass.key] || CLASS_SPRITES.recruit;
-                            const spriteUrl = (shape && classData[shape]) ? classData[shape] : classData.default;
-
-                            const newSvg = `<svg ${match[1]} xmlns:xlink="http://www.w3.org/1999/xlink"><g opacity="0">${match[2]}</g><image href="${spriteUrl}" xlink:href="${spriteUrl}" x="0" y="0" width="100%" height="100%" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
-                            return new target([newSvg], options);
-                        }
-
-                        let targetPlayer = matchBlobToPlayer(svgStr);
-                        if (!targetPlayer && cityPlayersQueue.length > 0 && !isMe) {
-                            targetPlayer = cityPlayersQueue.shift();
-                        }
-
-                        let spriteUrl = null;
-                        if (targetPlayer) {
-                            spriteUrl = getPlayerSprite(targetPlayer.who);
-                            if (!spriteUrl) {
-                                const gear = playerGearCache[targetPlayer.who] || {};
-                                const playerClass = detectPlayerClass(gear, targetPlayer.role);
-                                const shape = targetPlayer.look?.shape;
-                                const classData = CLASS_SPRITES[playerClass.key] || CLASS_SPRITES.recruit;
-                                spriteUrl = (shape && classData[shape]) ? classData[shape] : classData.default;
-                            }
-
-                            const newSvg = `<svg ${match[1]} xmlns:xlink="http://www.w3.org/1999/xlink"><g opacity="0">${match[2]}</g><image href="${spriteUrl}" xlink:href="${spriteUrl}" x="0" y="0" width="100%" height="100%" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
-                            return new target([newSvg], options);
-                        } else {
-                            return new target(...args);
-                        }
-                    }
+                if (spriteUrl && spriteUrl.trim() !== "" && !spriteUrl.startsWith("PASTE_") && !spriteUrl.startsWith("/*")) {
+                    return `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><image href="${spriteUrl}" width="32" height="32" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
                 }
             }
-            return new target(...args);
+
+            return originalJDoodle.apply(this, arguments);
+        };
+
+        log('HOOK', 'jDoodle перехвачен!');
+
+        if (gearSetPending) {
+            gearSetPending = false;
+            setTimeout(triggerGameRerender, 100);
+        } else {
+            setTimeout(triggerGameRerender, 100);
         }
-    });
+        return true;
+    }
+
+    let _MDDoodle;
+    try {
+        Object.defineProperty(_win, 'MDDoodle', {
+            configurable: true,
+            get() { return _MDDoodle; },
+            set(v) {
+                _MDDoodle = v;
+                log('HOOK', 'MDDoodle присвоен');
+                wrapJDoodle();
+            }
+        });
+    } catch (e) {
+        log('ERR', 'Не удалось поставить setter на MDDoodle', e);
+    }
+
+    let hookStarted = performance.now();
+    (function rafPoll() {
+        if (wrapJDoodle()) return;
+        if (performance.now() - hookStarted < 30000) requestAnimationFrame(rafPoll);
+    })();
+
+    const fallbackInterval = setInterval(() => {
+        if (wrapJDoodle()) clearInterval(fallbackInterval);
+    }, 500);
+    setTimeout(() => clearInterval(fallbackInterval), 40000);
 
     // ==========================================
-    // ЧАСТЬ 4b: Canvas — плашки имён
+    // ЧАСТЬ 5: CANVAS ХУК (Гладкая обводка)
     // ==========================================
     function isNameplateCanvas(canvas) {
         return canvas && canvas.height > 0 && canvas.height < 100 && canvas.width > canvas.height;
@@ -446,7 +403,10 @@
     function hookContext(ContextClass) {
         if (!ContextClass || !ContextClass.prototype) return;
 
-        const nativeStrokeText = ContextClass.prototype.strokeText;
+        const origMeasureText = ContextClass.prototype.measureText;
+        const originalFillText = ContextClass.prototype.fillText;
+        const originalStrokeText = ContextClass.prototype.strokeText;
+        if (!originalFillText) return;
 
         const blockMethods = ['fill', 'stroke', 'fillRect', 'strokeRect', 'arc', 'ellipse', 'strokeText'];
         blockMethods.forEach(method => {
@@ -458,137 +418,98 @@
             };
         });
 
-        const originalFillText = ContextClass.prototype.fillText;
-        if (!originalFillText) return;
+        ContextClass.prototype.measureText = function(text) {
+            const metrics = origMeasureText.apply(this, arguments);
+            if (typeof text === 'string' && text.length > 0) {
+                const info = GUILD_LOOKUP[text.trim().toLowerCase()];
+                if (info && info.icons) {
+                    const mockMetrics = Object.create(metrics);
+                    Object.defineProperty(mockMetrics, 'width', {
+                        value: metrics.width + (info.icons.length * 18) + 6
+                    });
+                    return mockMetrics;
+                }
+            }
+            return metrics;
+        };
+
         const lastDrawn = new WeakMap();
 
         ContextClass.prototype.fillText = function(text, x, y, maxWidth) {
             if (isNameplateCanvas(this.canvas)) {
-                if (typeof text !== 'string') return originalFillText.apply(this, arguments);
-                if (/^\d+$/.test(text.trim())) return;
-
+                if (typeof text !== 'string' || /^\d+$/.test(text.trim())) return;
                 const trimmedText = text.trim();
                 const now = Date.now();
+
                 const last = lastDrawn.get(this.canvas);
                 if (last && last.text === trimmedText && now - last.time < 50) return;
                 lastDrawn.set(this.canvas, { text: trimmedText, time: now });
 
-                let textColor = '#ffffff';
-                if (window.CUSTOM_COLORS[trimmedText]) {
-                    const custom = window.CUSTOM_COLORS[trimmedText];
-                    textColor = (typeof custom === 'string') ? custom : (custom.color || '#ffffff');
-                } else {
-                    const lower = trimmedText.toLowerCase();
-                    for (const g in window.GUILDS) {
-                        if (window.GUILDS[g].members.some(m => m.toLowerCase() === lower)) {
-                            textColor = window.GUILDS[g].color;
-                            break;
-                        }
-                    }
-                }
+                const info = GUILD_LOOKUP[trimmedText.toLowerCase()];
+                const icons = info ? info.icons : '';
+                const textColor = info ? info.color : '#ffffff';
 
                 this.save();
                 const isMe = window.myUsername && trimmedText === window.myUsername;
                 const currentSize = isMe ? window.FONT_CONFIG.size + 2 : window.FONT_CONFIG.size;
                 const currentWeight = (window.FONT_CONFIG.weight === 'bold' || isMe) ? 'bold' : 'normal';
-                const originalAlign = this.textAlign || 'start';
-                const oldWidth = this.measureText(text).width;
+
+                const displayText = (icons ? icons + ' ' : '') + trimmedText;
 
                 this.font = `${currentWeight} ${currentSize}px ${window.FONT_CONFIG.family}`;
+
                 this.textAlign = 'center';
                 this.textBaseline = 'middle';
+                const drawX = this.canvas.width / 2;
+                const drawY = this.canvas.height / 2;
 
-                let drawX = x;
-                if (originalAlign === 'left' || originalAlign === 'start') drawX += oldWidth / 2;
-                else if (originalAlign === 'right' || originalAlign === 'end') drawX -= oldWidth / 2;
-
-                drawX += window.CITY_NAMEPLATE_CONFIG.offsetX;
-                const drawY = y + window.CITY_NAMEPLATE_CONFIG.offsetY;
-
-                if (nativeStrokeText) {
-                    this.lineWidth = 3;
-                    this.strokeStyle = '#000000';
-                    this.lineJoin = 'round';
-                    nativeStrokeText.call(this, text, drawX, drawY, maxWidth);
+                // Гладкая обводка
+                this.lineWidth = 2.5; // <--- РЕГУЛЯТОР ТОЛЩИНЫ
+                this.lineJoin = 'round';
+                this.lineCap = 'round';
+                this.miterLimit = 2;
+                this.strokeStyle = '#000000';
+                if (originalStrokeText) {
+                    originalStrokeText.call(this, displayText, drawX, drawY);
                 }
+
+                if (isMe) {
+                    this.shadowColor = textColor !== '#ffffff' ? textColor : '#ffffff';
+                    this.shadowBlur = 4; // <--- РЕГУЛЯТОР СВЕЧЕНИЯ
+                }
+
                 this.fillStyle = textColor;
-                this.shadowBlur = 0;
-                originalFillText.call(this, text, drawX, drawY, maxWidth);
+                originalFillText.call(this, displayText, drawX, drawY);
                 this.restore();
                 return;
             }
             return originalFillText.apply(this, arguments);
         };
     }
-
     hookContext(window.CanvasRenderingContext2D);
-    if (typeof OffscreenCanvasRenderingContext2D !== 'undefined') {
-        hookContext(window.OffscreenCanvasRenderingContext2D);
-    }
+    if (typeof OffscreenCanvasRenderingContext2D !== 'undefined') hookContext(window.OffscreenCanvasRenderingContext2D);
 
     // ==========================================
-    // ЧАСТЬ 5: UI 2D + МЕНЮ
+    // ЧАСТЬ 6: ШАХТА (DOM)
     // ==========================================
-    function initDwarfEngine() {
-        if (!window.MDDoodle || typeof window.MDDoodle.jDoodle !== 'function') {
-            setTimeout(initDwarfEngine, 300);
-            return;
-        }
-        const originalJDoodle = window.MDDoodle.jDoodle;
-        window.MDDoodle.jDoodle = function(seed, mood, uniform, extra, look) {
-            if (extra && extra.who && extra.who.startsWith('npc:')) {
-                return `<g transform="translate(60, 170) scale(2.5)"><image href="${NPC_SPRITES.mine}" x="-32" y="-64" width="64" height="64" style="image-rendering: pixelated;" /></g>`;
-            }
-            if (document.querySelector('.mn-h')) return originalJDoodle(seed, mood, uniform, extra, look);
-            if (!extra || !extra.who) return originalJDoodle(seed, mood, uniform, extra, look);
-
-            let gear = {};
-            const isMe = (extra.who === window.myUsername || extra.who === 'jeriksi');
-            if (isMe) gear = lastMyGear || extra.gear || playerGearCache[extra.who] || {};
-            else gear = extra.gear || playerGearCache[extra.who] || {};
-            if (extra.gear) playerGearCache[extra.who] = extra.gear;
-            if (isMe && document.querySelector('#tab-hero.tab.on')) return originalJDoodle(seed, mood, uniform, extra, look);
-
-            const role = extra.role || (look && look.role);
-            const playerClass = detectPlayerClass(gear, role);
-            const shape = look && look.shape;
-
-            let spritesheetUrl = getPlayerSprite(extra.who);
-            if (!spritesheetUrl) {
-                const classData = CLASS_SPRITES[playerClass.key] || CLASS_SPRITES.recruit;
-                spritesheetUrl = (shape && classData[shape]) ? classData[shape] : classData.default;
-            }
-
-            const renderSize = 128, frameSize = 32;
-            const posX = playerClass.col * frameSize, posY = playerClass.row * frameSize;
-            return `<g class="dwarf-${playerClass.key}" transform="translate(62, 173) scale(${playerClass.scale})"><image href="${spritesheetUrl}" x="${-renderSize/2}" y="${-renderSize}" width="${renderSize}" height="${renderSize}" style="image-rendering: pixelated;" preserveAspectRatio="none" clip-path="inset(0px ${frameSize - posX - frameSize}px ${frameSize - posY - frameSize}px ${posX}px)" /></g>`;
-        };
-    }
-    window.addEventListener('load', initDwarfEngine);
-
     function processCharacterTab() {
         document.querySelectorAll('svg.jl-doodle').forEach(svg => {
             if (svg.dataset.dwarfProcessed === gearCacheVersion.toString()) return;
             let playerClass = CLASSES.recruit;
             if (lastMyGear) playerClass = detectPlayerClass(lastMyGear);
-
             let spriteUrl = getPlayerSprite(window.myUsername);
             if (!spriteUrl) {
                 const classData = CLASS_SPRITES[playerClass.key] || CLASS_SPRITES.recruit;
                 const shape = window.myLook?.shape;
                 spriteUrl = (shape && classData[shape]) ? classData[shape] : classData.default;
             }
-
+            if (!spriteUrl || spriteUrl.startsWith("/*")) return;
             svg.innerHTML = `<svg x="-4" y="42" width="128" height="128" viewBox="0 0 32 32"><image href="${spriteUrl}" width="32" height="32" style="image-rendering: pixelated;" /></svg>`;
             svg.dataset.dwarfProcessed = gearCacheVersion.toString();
         });
     }
 
-    // ==========================================
-    // ЧАСТЬ 6: ШАХТА
-    // ==========================================
-    const FACING_CONFIG = { invertHorizontal: true, invertVertical: false, forceFlip: false, ignoreGameFlip: false };
-    const mineStyleId = 'dwarf-mine-v179-style';
+    const mineStyleId = 'dwarf-mine-v222-style';
     if (!document.getElementById(mineStyleId)) {
         const style = document.createElement('style');
         style.id = mineStyleId;
@@ -607,16 +528,8 @@
             .dwarf-dir-box.state-walk:not(.state-dig) .dwarf-pickaxe { opacity: 0; }
             .dwarf-dir-box.state-dig .dwarf-mine-sprite { animation: dwarfDiggingBody var(--dd, 1.2s) var(--dl, 0s) infinite ease-in-out; }
             .dwarf-dir-box.state-dig .dwarf-pickaxe { opacity: 1; animation: pickaxeSwing var(--dd, 1.2s) var(--dl, 0s) infinite ease-in-out; }
-
             .mn-nm2, .mn-menm, .mn-lbl, .mn-hl { display: none !important; }
-
-            .clean-nameplate {
-                position: absolute; top: ${NAMEPLATE_CONFIG.offsetY}px; left: 50%;
-                transform: translateX(calc(-50% + ${NAMEPLATE_CONFIG.offsetX}px));
-                font-family: sans-serif; font-size: 14px; font-weight: bold;
-                white-space: nowrap; pointer-events: none; z-index: 9999 !important;
-                padding: 0; display: flex; align-items: center; gap: 4px;
-            }
+            .clean-nameplate { position: absolute; top: ${NAMEPLATE_CONFIG.offsetY}px; left: 50%; transform: translateX(calc(-50% + ${NAMEPLATE_CONFIG.offsetX}px)); font-family: sans-serif; font-size: 14px; font-weight: bold; white-space: nowrap; pointer-events: none; z-index: 9999 !important; padding: 0; display: flex; align-items: center; gap: 4px; }
             .clean-nameplate.is-me { font-size: 16px; font-weight: 900; z-index: 10000 !important; }
         `;
         (document.head || document.documentElement).appendChild(style);
@@ -657,12 +570,30 @@
     function initMineHero(el) {
         if (!el.dataset.mineInjected) {
             el.dataset.mineInjected = 'true';
-            el.innerHTML = `<div class="dwarf-animated-container"><div class="clean-nameplate"></div><div class="dwarf-dir-box"><div class="dwarf-flip-wrap"><img src="" class="dwarf-mine-sprite" /><img src="${PICKAXE_SPRITE_URL}" class="dwarf-pickaxe" /></div></div></div>`;
+            el.innerHTML = `<div class="dwarf-animated-container"><div class="clean-nameplate"></div><div class="dwarf-dir-box"><div class="dwarf-flip-wrap"><img class="dwarf-mine-sprite" style="visibility:hidden;" /><img src="${PICKAXE_SPRITE_URL}" class="dwarf-pickaxe" /></div></div></div>`;
             el._lastX = null; el._lastY = null; el._lastMovedAt = 0; el._lastDir = null; el._lastSpriteKey = null;
             el._sprite = el.querySelector('.dwarf-mine-sprite');
             el._box = el.querySelector('.dwarf-dir-box');
             el._nameplate = el.querySelector('.clean-nameplate');
+            new MutationObserver(() => {
+                const s = el.getAttribute('style') || '';
+                const m = s.match(/translate(?:3d)?\(\s*(-?[\d.]+)px,\s*(-?[\d.]+)px/);
+                if (m) {
+                    const x = parseFloat(m[1]); const y = parseFloat(m[2]);
+                    if (el._lastX !== null) {
+                        const dx = x - el._lastX; const dy = y - el._lastY;
+                        if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+                            el._lastMovedAt = performance.now();
+                            if (Math.abs(dx) > Math.abs(dy)) el._lastDir = dx > 0 ? 'right' : 'left';
+                            else el._lastDir = dy > 0 ? 'down' : 'up';
+                        }
+                    }
+                    el._lastX = x; el._lastY = y;
+                }
+                applyHeroState(el);
+            }).observe(el, { attributes: true, attributeFilter: ['style'] });
             new MutationObserver(() => applyHeroState(el)).observe(el, { attributes: true, attributeFilter: ['class'] });
+            applyHeroState(el);
         }
     }
 
@@ -673,25 +604,14 @@
 
         if (nameplate) {
             if (username) {
-                let guildColor = null, guildIcon = '';
-                if (window.CUSTOM_COLORS[username]) {
-                    const custom = window.CUSTOM_COLORS[username];
-                    guildColor = (typeof custom === 'string') ? custom : custom.color;
-                } else {
-                    const lower = username.toLowerCase();
-                    for (const g in window.GUILDS) {
-                        if (window.GUILDS[g].members.some(m => m.toLowerCase() === lower)) {
-                            guildColor = window.GUILDS[g].color;
-                            guildIcon = window.GUILDS[g].icon || '';
-                            break;
-                        }
-                    }
-                }
+                const info = GUILD_LOOKUP[username.toLowerCase()];
+                const icons = info ? info.icons : '';
+                const textColor = info ? info.color : '#ffffff';
 
                 nameplate.innerHTML = '';
-                if (guildIcon) {
+                if (icons) {
                     const iconSpan = document.createElement('span');
-                    iconSpan.textContent = guildIcon;
+                    iconSpan.textContent = icons;
                     nameplate.appendChild(iconSpan);
                 }
                 const nameSpan = document.createElement('span');
@@ -702,23 +622,15 @@
                 const isMe = window.myUsername && username === window.myUsername;
                 if (isMe) nameplate.classList.add('is-me');
 
-                // Всегда применяем цвет гильдии, если он есть. Иначе белый.
-                nameplate.style.color = guildColor ? guildColor : '#ffffff';
-
-                // Уменьшаем обводку, чтобы она не перекрывала цвет текста
+                nameplate.style.color = textColor;
                 nameplate.style.textShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000`;
                 nameplate.style.webkitTextStroke = `0.5px black`;
                 nameplate.style.paintOrder = `stroke fill`;
                 nameplate.style.zIndex = `9999`;
                 nameplate.style.opacity = `1`;
 
-                // Если это мы, добавляем свечение цвета гильдии
                 if (isMe) {
-                    if (guildColor) {
-                        nameplate.style.textShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px ${guildColor}`;
-                    } else {
-                        nameplate.style.textShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px #fff`;
-                    }
+                    nameplate.style.textShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px ${textColor !== '#ffffff' ? textColor : '#fff'}`;
                 }
             } else nameplate.textContent = '';
         }
@@ -726,15 +638,19 @@
         const gearKey = (el.getAttribute('data-l') || '') + '|' + (el.getAttribute('data-lk') || '') + '|' + gearCacheVersion;
         if (el._lastSpriteKey !== gearKey) {
             el._lastSpriteKey = gearKey;
-            const url = getMineSpriteForElement(el);
-            if (sprite.getAttribute('src') !== url) sprite.src = url;
+            const newUrl = getMineSpriteForElement(el);
+            if (newUrl && !newUrl.startsWith('PASTE_') && !newUrl.startsWith('/*')) {
+                const currentSrc = sprite.getAttribute('src');
+                if (currentSrc !== newUrl) {
+                    sprite.src = newUrl;
+                    sprite.style.visibility = 'visible';
+                } else { sprite.style.visibility = 'visible'; }
+            }
         }
+
         const isDig = el.classList.contains('dig');
-        const hasWalk = el.classList.contains('walk');
         const isFl = el.classList.contains('fl');
-        const now = performance.now();
-        const recentlyMoved = el._lastMovedAt > 0 && (now - el._lastMovedAt) < 180;
-        const isWalking = (hasWalk || recentlyMoved) && !isDig;
+        const isWalking = (el._lastMovedAt > 0 && (performance.now() - el._lastMovedAt) < 150) && !isDig;
         box.classList.toggle('state-dig', isDig);
         box.classList.toggle('state-walk', isWalking);
         let wantFlip = (FACING_CONFIG.ignoreGameFlip ? false : isFl) || el._lastDir === 'left';
@@ -746,23 +662,12 @@
     }
 
     function tickHeroes() {
+        const now = performance.now();
         document.querySelectorAll('.mn-h').forEach(el => {
-            if (!el.dataset.mineInjected) initMineHero(el);
-            const s = el.getAttribute('style') || '';
-            const m = s.match(/translate(?:3d)?\(\s*(-?[\d.]+)px,\s*(-?[\d.]+)px/);
-            if (m) {
-                const x = parseFloat(m[1]); const y = parseFloat(m[2]);
-                if (el._lastX !== null) {
-                    const dx = x - el._lastX; const dy = y - el._lastY;
-                    if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) {
-                        el._lastMovedAt = performance.now();
-                        if (Math.abs(dx) > Math.abs(dy)) el._lastDir = dx > 0 ? 'right' : 'left';
-                        else el._lastDir = dy > 0 ? 'down' : 'up';
-                    }
-                }
-                el._lastX = x; el._lastY = y;
+            if (el._lastMovedAt > 0 && (now - el._lastMovedAt) >= 150) {
+                el._lastMovedAt = 0;
+                applyHeroState(el);
             }
-            applyHeroState(el);
         });
         if (document.querySelector('svg.jl-doodle')) processCharacterTab();
         requestAnimationFrame(tickHeroes);
@@ -780,5 +685,5 @@
     document.querySelectorAll('.mn-h').forEach(initMineHero);
     requestAnimationFrame(tickHeroes);
 
-    console.log('%c[DwarfMod v179] Цвет гильдии применяется всегда, добавлено свечение для себя.', 'color:#0f0;font-weight:bold');
+    log('INIT', 'DwarfMod успешно запущен!');
 })();
