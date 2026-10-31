@@ -492,7 +492,7 @@
 
                 if (isMe) {
                     this.shadowColor = textColor !== '#ffffff' ? textColor : '#ffffff';
-                    this.shadowBlur = 4;
+                    this.shadowBlur = 0;
                 } else {
                     this.shadowBlur = 0;
                 }
