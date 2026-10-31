@@ -3,7 +3,7 @@
 // @namespace   http://tampermonkey.net/
 // @version     222.1
 // @match       https://play.multidonate.ru/*
-// @run-at      document-start
+// @run-at      document-starthttps://github.com/repos
 // @grant       none
 // ==/UserScript==
 
@@ -399,7 +399,7 @@
     setTimeout(() => clearInterval(fallbackInterval), 40000);
     
     // ==========================================
-    // ЧАСТЬ 5: CANVAS ХУК (Гладкая обводка + ФОН)
+    // ЧАСТЬ 5: CANVAS ХУК (Гладкая обводка + Центрирование)
     // ==========================================
     function isNameplateCanvas(canvas) {
         return canvas && canvas.height > 0 && canvas.height < 100 && canvas.width > canvas.height;
@@ -413,9 +413,7 @@
         const originalStrokeText = ContextClass.prototype.strokeText;
         if (!originalFillText) return;
 
-        // ❗ ТЕПЕРЬ МЫ НЕ БЛОКИРУЕМ ФОН. 
-        // Игра будет рисовать свои плашки через fill/fillRect.
-        // Блокируем только strokeText, чтобы не было двойной стандартной обводки.
+        // Блокируем только стандартную обводку, чтобы не было двойного текста
         const blockMethods = ['strokeText'];
         blockMethods.forEach(method => {
             const original = ContextClass.prototype[method];
@@ -466,6 +464,18 @@
 
                 this.font = `${currentWeight} ${currentSize}px ${window.FONT_CONFIG.family}`;
 
+                // ❗ ПРИНУДИТЕЛЬНО ЦЕНТРИРУЕМ ТЕКСТ
+                this.textAlign = 'center';
+                this.textBaseline = 'middle';
+                
+                // Берем координаты игры, но если они 0 (баг мобилок), берем центр холста
+                let drawX = x;
+                let drawY = y;
+                if (drawX === 0 && drawY === 0) {
+                    drawX = this.canvas.width / 2;
+                    drawY = this.canvas.height / 2;
+                }
+
                 // Точный расчет ширины иконки
                 let iconWidth = 0;
                 if (icons) {
@@ -474,14 +484,10 @@
                     iconWidth = displayMetrics.width - textMetrics.width;
                 }
 
-                let drawX = x;
-                let drawY = y;
-                
-                // Сдвигаем текст влево, чтобы иконка не смещала сам ник
-                if (this.textAlign === 'center') {
+                // Сдвигаем весь текст влево на половину ширины иконки, 
+                // чтобы сам НИК оказался ровно по центру
+                if (iconWidth > 0) {
                     drawX -= (iconWidth / 2);
-                } else if (this.textAlign === 'left' || this.textAlign === 'start') {
-                    drawX -= iconWidth;
                 }
 
                 // Гладкая обводка
