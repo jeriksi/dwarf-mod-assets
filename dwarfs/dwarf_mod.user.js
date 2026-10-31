@@ -139,9 +139,13 @@
             icon: "✅",
             members: ["DFOLtEach", "Oppencrusa"]
         },
-        "Злые котики": {
+        "Злые котята": {
             icon: "😺",
-            members: ["jeriksi"]
+            members: ["3oda", "3oda9447", "spector99th", "sp4ctat0r", "1_alex_vp", "leshalapin", "jeriksi", "jeriksi69", "SerFir⁴²", "fireartutzxc", "TsoiVechen210662", "Enigmo", "vizavig", "enigmo6249", "xo.neontop", "timaxionit", "Kivi203", "i_rekd_i", "Shm_bl_ga", "vordaoluh", "great913", "coda0165_84965", "host1k_top", "hOst1k", "Raver", "rav6r", "Ananta_Shesha", "anantashesha3823", "Domino67", "domino_s67"]
+        },
+        "Паства Божьего света": {
+            icon: "☀️",
+            members: ["snoupikee", "Malik"]
         }
     };
 
