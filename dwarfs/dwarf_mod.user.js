@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name        Multidonate Dwarf Mod (FINAL v222.3)
+// @name        Multidonate Dwarf Mod (FINAL v222.4)
 // @namespace   http://tampermonkey.net/
-// @version     222.3
+// @version     222.4
 // @match       https://play.multidonate.ru/*
 // @run-at      document-start
 // @grant       none
@@ -13,7 +13,7 @@
     const _win = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
     const log = (tag, ...args) => console.log(`%c[${tag}]`, 'color: #00ffff; font-weight: bold;', ...args);
 
-    log('INIT', 'Скрипт v222.3 запущен!');
+    log('INIT', 'Скрипт v222.4 запущен!');
 
     // ==========================================
     // ЧАСТЬ 1: КОНФИГУРАЦИЯ
@@ -26,7 +26,8 @@
 
     const NAMEPLATE_CONFIG = { offsetY: -75, offsetX: 0 };
     window.CITY_NAMEPLATE_CONFIG = { offsetY: 0, offsetX: 0 };
-        const FACING_CONFIG = { invertHorizontal: true, invertVertical: false, forceFlip: false, ignoreGameFlip: false };
+    const FACING_CONFIG = { invertHorizontal: true, invertVertical: false, forceFlip: false, ignoreGameFlip: false };
+
     // спрайты персонажей
     const CLASS_SPRITES = {
         legionary: {
@@ -345,7 +346,7 @@
     setTimeout(() => clearInterval(fallbackInterval), 40000);
 
     // ==========================================
-    // ЧАСТЬ 5: CANVAS ХУК (Идеальное центрирование)
+    // ЧАСТЬ 5: CANVAS ХУК (Без фона + Центрирование)
     // ==========================================
     function isNameplateCanvas(canvas) {
         return canvas && canvas.height > 0 && canvas.height < 100 && canvas.width > canvas.height;
@@ -359,7 +360,8 @@
         const originalStrokeText = ContextClass.prototype.strokeText;
         if (!originalFillText) return;
 
-        const blockMethods = ['strokeText'];
+        // ❗ БЛОКИРУЕМ ФОН И СТАНДАРТНУЮ ОБВОДКУ
+        const blockMethods = ['fill', 'stroke', 'fillRect', 'strokeRect', 'arc', 'ellipse', 'strokeText'];
         blockMethods.forEach(method => {
             const original = ContextClass.prototype[method];
             if (!original) return;
@@ -409,7 +411,7 @@
 
                 this.font = `${currentWeight} ${currentSize}px ${window.FONT_CONFIG.family}`;
 
-                // ❗ ПОЛНОЕ ЦЕНТРИРОВАНИЕ: Игнорируем x и y игры, используем центр холста с учетом масштаба (DPR)
+                // Идеальное центрирование по холсту с учетом масштаба (DPR)
                 this.textAlign = 'center';
                 this.textBaseline = 'middle';
                 const scaleX = Math.abs((this.getTransform && this.getTransform().a) || 1);
@@ -639,5 +641,5 @@
     document.querySelectorAll('.mn-h').forEach(initMineHero);
     requestAnimationFrame(tickHeroes);
 
-    log('INIT', 'DwarfMod v222.3 успешно запущен!');
+    log('INIT', 'DwarfMod v222.4 успешно запущен!');
 })();
