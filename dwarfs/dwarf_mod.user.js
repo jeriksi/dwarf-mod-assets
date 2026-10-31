@@ -1,19 +1,21 @@
 // ==UserScript==
 // @name        Multidonate Dwarf Mod
 // @namespace   http://tampermonkey.net/
-// @version     222.6
+// @version     222.7
 // @match       https://play.multidonate.ru/*
 // @run-at      document-start
 // @grant       none
+// @updateURL   https://github.com/jeriksi/dwarf-mod-assets/raw/refs/heads/main/dwarfs/dwarf_mod.user.js
+// @downloadURL https://github.com/jeriksi/dwarf-mod-assets/raw/refs/heads/main/dwarfs/dwarf_mod.user.js
 // ==/UserScript==
 
 (function() {
     'use strict';
 
     const _win = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
-    const log = (tag, ...args) => console.log(`%c[${tag}]`, 'color: #00ffff; font-weight: bold;', ...args);
 
-    log('INIT', 'Dwarf Mod запущен!');
+    // Заглушка логирования: вывод отключён.
+    const log = () => {};
 
     // ==========================================
     // ЧАСТЬ 1: КОНФИГУРАЦИЯ
@@ -156,7 +158,7 @@
         "fireartutzxc": { color: "#E8590C", bg: 'rgba(232, 89, 12, 0.3)' },
         "spector99th": { color: "#d93434", bg: 'rgba(217, 52, 52, 0.3)' },
     };
-    
+
     const GUILD_LOOKUP = {};
     for (const g in GUILDS) {
         for (const member of GUILDS[g].members) {
@@ -186,18 +188,6 @@
         archer:      ['bow','hunting_bow','composite_bow','yew_bow','longbow','sagittarius_bow','apollo_bow','diana_bow','sling','rogatka'],
         legionary:   ['sword','gladius','rusty_sword','spatha','iron_sword','sharp_gladius','legate_gladius','praetorian_spatha','aquila_blade','hatchet','bearded_axe','war_axe','wood_spear','pilum','triarius_hasta','retiarius_trident','wood_club','barbarian_club','pitchfork']
     };
-
-    const IGNORE_STRINGS = ['не запеклось', 'Invalid encoded image data', 'citygl.js'];
-    ['log', 'warn', 'error', 'info', 'debug'].forEach(method => {
-        const original = console[method];
-        console[method] = function(...args) {
-            try {
-                const str = args.map(arg => (typeof arg === 'string' ? arg : (arg instanceof Error ? arg.message : String(arg)))).join(' ');
-                if (IGNORE_STRINGS.some(keyword => str.includes(keyword))) return;
-            } catch (e) {}
-            original.apply(console, args);
-        };
-    });
 
     const playerGearCache = {};
     let lastMyGear = null;
@@ -229,123 +219,200 @@
     let gearSetPending = false;
     let jdoodleWrapped = false;
 
+    // FIX 4: уважаем открытые модалки Legion, урезаем хвост рендера
     function triggerGameRerender() {
         const doUpdate = () => {
+            const legionModalOpen = document.querySelector('.custom-modal');
+            const legionBusy = legionModalOpen ||
+                document.querySelector('.chat-pip, .priest-hud, .legion-fab-wrap');
+            if (legionBusy && legionModalOpen) {
+                setTimeout(doUpdate, 800);
+                return;
+            }
             try { if (_win.MDDoodle && typeof _win.MDDoodle.update === 'function') _win.MDDoodle.update(); } catch (e) {}
             window.dispatchEvent(new Event('resize'));
             processCharacterTab();
         };
         doUpdate();
-        [100, 500, 1500, 3000, 6000].forEach(ms => setTimeout(doUpdate, ms));
+        [100, 500, 1500].forEach(ms => setTimeout(doUpdate, ms));
     }
 
     // ==========================================
-    // ЧАСТЬ 3: API ХУК
+    // ЧАСТЬ 3: API ХУК (FIX 2: маркер + try/catch)
     // ==========================================
     const origFetch = _win.fetch;
-    _win.fetch = async function (...args) {
-        const url = typeof args[0] === 'string' ? args[0] : '';
-        const res = await origFetch.apply(this, args);
-        try {
-            if (url.includes('/api/me') || url.includes('/api/equip') || url.includes('/api/city/enter') || url.includes('/api/city/go')) {
-                const data = await res.clone().json();
-                if (data?.user?.login) { window.myUsername = data.user.login; localStorage.setItem('md_myUsername', window.myUsername); }
-                if (data?.me?.n || data?.me?.login) { window.myUsername = data.me.n || data.me.login; localStorage.setItem('md_myUsername', window.myUsername); }
-                const hero = data?.hero || data?.me;
-                if (hero) {
-                    if (hero.look) { window.myLook = hero.look; try { localStorage.setItem('md_myLook', JSON.stringify(hero.look)); } catch (e) {} }
-                    if (hero.gear) {
-                        lastMyGear = hero.gear;
-                        try { localStorage.setItem('md_myGear', JSON.stringify(hero.gear)); } catch (e) {}
-                        if (window.myUsername) playerGearCache[window.myUsername] = hero.gear;
-                        gearCacheVersion++;
-                        if (jdoodleWrapped) setTimeout(triggerGameRerender, 50); else gearSetPending = true;
-                    }
-                }
-                if (url.includes('/api/city/enter') || url.includes('/api/city/go')) {
-                    if (data?.a && Array.isArray(data.a)) {
-                        data.a.forEach(p => { const who = p.n || p.l; if (who && p.g) playerGearCache[who] = p.g; });
-                    }
-                    if (jdoodleWrapped) setTimeout(triggerGameRerender, 50);
-                }
+    if (origFetch && origFetch.__dwarfWrapped) {
+        // уже обёрнут Dwarf — пропускаем
+    } else {
+        const wrappedFetch = async function (...args) {
+            const url = typeof args[0] === 'string'
+                ? args[0]
+                : (args[0] && args[0].url) || '';
+
+            let res;
+            try {
+                res = await origFetch.apply(this, args);
+            } catch (e) {
+                // Не глотаем сетевую ошибку — пусть летит дальше в Legion/игру
+                throw e;
             }
-        } catch (e) {}
-        return res;
-    };
+
+            try {
+                if (url.includes('/api/me') ||
+                    url.includes('/api/equip') ||
+                    url.includes('/api/city/enter') ||
+                    url.includes('/api/city/go')) {
+
+                    let data = null;
+                    try { data = await res.clone().json(); } catch (_) {}
+
+                    if (data) {
+                        if (data.user && data.user.login) {
+                            window.myUsername = data.user.login;
+                            try { localStorage.setItem('md_myUsername', window.myUsername); } catch (e) {}
+                        }
+                        if (data.me && (data.me.n || data.me.login)) {
+                            window.myUsername = data.me.n || data.me.login;
+                            try { localStorage.setItem('md_myUsername', window.myUsername); } catch (e) {}
+                        }
+                        const hero = data.hero || data.me;
+                        if (hero) {
+                            if (hero.look) {
+                                window.myLook = hero.look;
+                                try { localStorage.setItem('md_myLook', JSON.stringify(hero.look)); } catch (e) {}
+                            }
+                            if (hero.gear) {
+                                lastMyGear = hero.gear;
+                                try { localStorage.setItem('md_myGear', JSON.stringify(hero.gear)); } catch (e) {}
+                                if (window.myUsername) playerGearCache[window.myUsername] = hero.gear;
+                                gearCacheVersion++;
+                                if (jdoodleWrapped) setTimeout(triggerGameRerender, 50);
+                                else gearSetPending = true;
+                            }
+                        }
+                        if (url.includes('/api/city/enter') || url.includes('/api/city/go')) {
+                            if (data.a && Array.isArray(data.a)) {
+                                data.a.forEach(p => {
+                                    const who = p.n || p.l;
+                                    if (who && p.g) playerGearCache[who] = p.g;
+                                });
+                            }
+                            if (jdoodleWrapped) setTimeout(triggerGameRerender, 50);
+                        }
+                    }
+                }
+            } catch (e) { /* цепочку не рвём */ }
+
+            return res;
+        };
+        try { wrappedFetch.__dwarfWrapped = true; } catch (e) {}
+        try { _win.fetch = wrappedFetch; } catch (e) {}
+    }
 
     // ==========================================
-    // ЧАСТЬ 4: ПЕРЕХВАТ JDOODLE (ИСПРАВЛЕНА ЛОГИКА)
+    // ЧАСТЬ 4: ПЕРЕХВАТ JDOODLE (FIX 6: маркер)
     // ==========================================
     function wrapJDoodle() {
         if (jdoodleWrapped) return true;
         if (!_win.MDDoodle || typeof _win.MDDoodle.jDoodle !== 'function') return false;
+        if (_win.MDDoodle.jDoodle.__dwarfWrapped) {
+            jdoodleWrapped = true;
+            return true;
+        }
 
         jdoodleWrapped = true;
         const originalJDoodle = _win.MDDoodle.jDoodle;
 
-        _win.MDDoodle.jDoodle = function(seed, mood, uniform, extra, look) {
-            const who = extra?.who;
+        const wrappedJDoodle = function(seed, mood, uniform, extra, look) {
+            const who = extra && extra.who;
+
+            // NPC
             if (who && who.startsWith('npc:')) {
                 const isInMine = !!document.querySelector('.mn-h');
                 const npcSprite = isInMine ? NPC_SPRITES.mine : NPC_SPRITES.city;
-                if (npcSprite && npcSprite.trim() !== "") {
+                if (npcSprite &&
+                    npcSprite.trim() !== "" &&
+                    !npcSprite.startsWith("/*") &&
+                    !npcSprite.startsWith("PASTE_")) {
                     return `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><image href="${npcSprite}" width="32" height="32" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
                 }
                 return originalJDoodle.apply(this, arguments);
             }
+
+            // В шахте не трогаем jDoodle — рендером занимается DOM
             if (document.querySelector('.mn-h')) return originalJDoodle.apply(this, arguments);
 
-            // 1. Другие игроки (в городе)
+            // 1. Другие игроки в городе
             if (who) {
-                let gear = (who === window.myUsername) ? (lastMyGear || extra.gear) : (extra.gear || playerGearCache[who] || {});
-                if (extra.gear) playerGearCache[who] = extra.gear;
-                const role = extra.role || (look && look.role);
+                let gear = (who === window.myUsername)
+                    ? (lastMyGear || (extra && extra.gear))
+                    : ((extra && extra.gear) || playerGearCache[who] || {});
+                if (extra && extra.gear) playerGearCache[who] = extra.gear;
+
+                const role = (extra && extra.role) || (look && look.role);
                 const playerClass = detectPlayerClass(gear, role);
                 const shape = look && look.shape;
+
                 let spriteUrl = getPlayerSprite(who);
                 if (!spriteUrl) {
                     const classData = CLASS_SPRITES[playerClass.key] || CLASS_SPRITES.recruit;
                     spriteUrl = (shape && classData[shape]) ? classData[shape] : classData.default;
                 }
-                if (spriteUrl && spriteUrl.trim() !== "" && !spriteUrl.startsWith("PASTE_") && !spriteUrl.startsWith("/*")) {
+                if (spriteUrl &&
+                    spriteUrl.trim() !== "" &&
+                    !spriteUrl.startsWith("PASTE_") &&
+                    !spriteUrl.startsWith("/*")) {
                     return `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><image href="${spriteUrl}" width="32" height="32" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
                 }
                 return originalJDoodle.apply(this, arguments);
             }
 
-            // 2. Главный герой (ТОЛЬКО В МЕНЮ #tab-hero)
+            // 2. Главный герой — только в меню #tab-hero
             if (!who && document.querySelector('#tab-hero.tab.on')) {
                 let playerClass = CLASSES.recruit;
                 if (lastMyGear) playerClass = detectPlayerClass(lastMyGear);
+
                 let spriteUrl = getPlayerSprite(window.myUsername);
                 if (!spriteUrl) {
                     const classData = CLASS_SPRITES[playerClass.key] || CLASS_SPRITES.recruit;
-                    const shape = look?.shape || window.myLook?.shape;
+                    const shape = (look && look.shape) || (window.myLook && window.myLook.shape);
                     spriteUrl = (shape && classData[shape]) ? classData[shape] : classData.default;
                 }
-                if (spriteUrl && spriteUrl.trim() !== "" && !spriteUrl.startsWith("PASTE_") && !spriteUrl.startsWith("/*")) {
+                if (spriteUrl &&
+                    spriteUrl.trim() !== "" &&
+                    !spriteUrl.startsWith("PASTE_") &&
+                    !spriteUrl.startsWith("/*")) {
                     return `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><image href="${spriteUrl}" width="32" height="32" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
                 }
             }
 
-            // Все остальные (НПС без npc:, декорации) остаются как есть
             return originalJDoodle.apply(this, arguments);
         };
 
-        log('HOOK', 'jDoodle перехвачен!');
-        if (gearSetPending) { gearSetPending = false; setTimeout(triggerGameRerender, 100); }
-        else { setTimeout(triggerGameRerender, 100); }
+        try { wrappedJDoodle.__dwarfWrapped = true; } catch (e) {}
+        _win.MDDoodle.jDoodle = wrappedJDoodle;
+
+        if (gearSetPending) {
+            gearSetPending = false;
+            setTimeout(triggerGameRerender, 100);
+        } else {
+            setTimeout(triggerGameRerender, 100);
+        }
         return true;
     }
 
-    let _MDDoodle;
+    // FIX 1: сохраняем уже существующее значение MDDoodle
+    let _MDDoodle = _win.MDDoodle;
     try {
         Object.defineProperty(_win, 'MDDoodle', {
             configurable: true,
             get() { return _MDDoodle; },
-            set(v) { _MDDoodle = v; log('HOOK', 'MDDoodle присвоен'); wrapJDoodle(); }
+            set(v) { _MDDoodle = v; wrapJDoodle(); }
         });
-    } catch (e) { log('ERR', 'Не удалось поставить setter на MDDoodle', e); }
+    } catch (e) {}
+
+    // если MDDoodle уже был к моменту старта — оборачиваем сразу
+    if (_MDDoodle && !jdoodleWrapped) setTimeout(() => wrapJDoodle(), 0);
 
     let hookStarted = performance.now();
     (function rafPoll() { if (wrapJDoodle()) return; if (performance.now() - hookStarted < 30000) requestAnimationFrame(rafPoll); })();
@@ -383,7 +450,6 @@
             if (typeof text === 'string' && text.length > 0) {
                 const info = GUILD_LOOKUP[text.trim().toLowerCase()];
                 if (info && info.icons) {
-                    // Оптимизация: возвращаем простой объект
                     return { width: metrics.width + (info.icons.length * 18) + 6 };
                 }
             }
@@ -452,18 +518,26 @@
     // ==========================================
     // ЧАСТЬ 6: ШАХТА (DOM)
     // ==========================================
+    // FIX 5: уважаем метку Legion (lgProcessed)
     function processCharacterTab() {
         document.querySelectorAll('svg.jl-doodle').forEach(svg => {
             if (svg.dataset.dwarfProcessed === gearCacheVersion.toString()) return;
+            if (svg.dataset.lgProcessed === '1') return;
+
             let playerClass = CLASSES.recruit;
             if (lastMyGear) playerClass = detectPlayerClass(lastMyGear);
+
             let spriteUrl = getPlayerSprite(window.myUsername);
             if (!spriteUrl) {
                 const classData = CLASS_SPRITES[playerClass.key] || CLASS_SPRITES.recruit;
-                const shape = window.myLook?.shape;
+                const shape = window.myLook && window.myLook.shape;
                 spriteUrl = (shape && classData[shape]) ? classData[shape] : classData.default;
             }
-            if (!spriteUrl || spriteUrl.startsWith("/*")) return;
+            if (!spriteUrl ||
+                spriteUrl.trim() === "" ||
+                spriteUrl.startsWith("/*") ||
+                spriteUrl.startsWith("PASTE_")) return;
+
             svg.innerHTML = `<svg x="-4" y="42" width="128" height="128" viewBox="0 0 32 32"><image href="${spriteUrl}" width="32" height="32" style="image-rendering: pixelated;" /></svg>`;
             svg.dataset.dwarfProcessed = gearCacheVersion.toString();
         });
@@ -499,8 +573,10 @@
         try {
             const username = el.getAttribute('data-l') ? el.getAttribute('data-l').trim() : '';
             if (!username) return CLASS_SPRITES.recruit.default;
+
             const unique = getPlayerSprite(username);
             if (unique) return unique;
+
             const lkAttr = el.getAttribute('data-lk') || '';
             let gear = {}, role = null, shape = null;
             if (lkAttr) {
@@ -508,12 +584,13 @@
                     const lkData = JSON.parse(lkAttr);
                     const look = Array.isArray(lkData) ? lkData[0] : null;
                     if (look && look.shape) shape = look.shape;
-                    gear = Array.isArray(lkData) ? lkData[1] : (lkData?.g || lkData?.gear || lkData);
-                    role = Array.isArray(lkData) ? lkData[0] : lkData?.role;
+                    gear = Array.isArray(lkData) ? lkData[1] : ((lkData && lkData.g) || (lkData && lkData.gear) || lkData);
+                    role = Array.isArray(lkData) ? lkData[0] : (lkData && lkData.role);
                 } catch (e) {}
             }
-            if (username === window.myUsername && lastMyGear) gear = lastMyGear;
-            else {
+            if (username === window.myUsername && lastMyGear) {
+                gear = lastMyGear;
+            } else {
                 const lkHasWeapon = gear && gear.w;
                 const cacheHasWeapon = playerGearCache[username] && playerGearCache[username].w;
                 if (!lkHasWeapon && cacheHasWeapon) gear = playerGearCache[username];
@@ -528,35 +605,54 @@
     function initMineHero(el) {
         if (!el.dataset.mineInjected) {
             el.dataset.mineInjected = 'true';
-            el.innerHTML = `<div class="dwarf-animated-container"><div class="clean-nameplate"></div><div class="dwarf-dir-box"><div class="dwarf-flip-wrap"><img class="dwarf-mine-sprite" style="visibility:hidden;" /><img src="${PICKAXE_SPRITE_URL}" class="dwarf-pickaxe" /></div></div></div>`;
-            el._lastX = null; el._lastY = null; el._lastMovedAt = 0; el._lastDir = null; el._lastSpriteKey = null;
+
+            // Кирка рендерится только если base64 восстановлен
+            const pickaxeHtml = (PICKAXE_SPRITE_URL &&
+                                 PICKAXE_SPRITE_URL.trim() !== "" &&
+                                 !PICKAXE_SPRITE_URL.startsWith("/*") &&
+                                 !PICKAXE_SPRITE_URL.startsWith("PASTE_"))
+                ? `<img src="${PICKAXE_SPRITE_URL}" class="dwarf-pickaxe" />`
+                : '';
+
+            el.innerHTML = `<div class="dwarf-animated-container"><div class="clean-nameplate"></div><div class="dwarf-dir-box"><div class="dwarf-flip-wrap"><img class="dwarf-mine-sprite" style="visibility:hidden;" />${pickaxeHtml}</div></div></div>`;
+
+            el._lastX = null; el._lastY = null; el._lastMovedAt = 0;
+            el._lastDir = null; el._lastSpriteKey = null;
             el._sprite = el.querySelector('.dwarf-mine-sprite');
             el._box = el.querySelector('.dwarf-dir-box');
             el._nameplate = el.querySelector('.clean-nameplate');
+
             new MutationObserver(() => {
                 const s = el.getAttribute('style') || '';
                 const m = s.match(/translate(?:3d)?\(\s*(-?[\d.]+)px,\s*(-?[\d.]+)px/);
                 if (m) {
-                    const x = parseFloat(m[1]); const y = parseFloat(m[2]);
+                    const x = parseFloat(m[1]);
+                    const y = parseFloat(m[2]);
                     if (el._lastX !== null) {
-                        const dx = x - el._lastX; const dy = y - el._lastY;
+                        const dx = x - el._lastX;
+                        const dy = y - el._lastY;
                         if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
                             el._lastMovedAt = performance.now();
                             if (Math.abs(dx) > Math.abs(dy)) el._lastDir = dx > 0 ? 'right' : 'left';
                             else el._lastDir = dy > 0 ? 'down' : 'up';
                         }
                     }
-                    el._lastX = x; el._lastY = y;
+                    el._lastX = x;
+                    el._lastY = y;
                 }
                 applyHeroState(el);
             }).observe(el, { attributes: true, attributeFilter: ['style'] });
+
             new MutationObserver(() => applyHeroState(el)).observe(el, { attributes: true, attributeFilter: ['class'] });
+
             applyHeroState(el);
         }
     }
 
     function applyHeroState(el) {
-        const sprite = el._sprite; const box = el._box; const nameplate = el._nameplate;
+        const sprite = el._sprite;
+        const box = el._box;
+        const nameplate = el._nameplate;
         if (!sprite || !box) return;
         const username = el.getAttribute('data-l') ? el.getAttribute('data-l').trim() : '';
 
@@ -590,30 +686,43 @@
                 if (isMe) {
                     nameplate.style.textShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px ${textColor !== '#ffffff' ? textColor : '#fff'}`;
                 }
-            } else nameplate.textContent = '';
+            } else {
+                nameplate.textContent = '';
+            }
         }
 
-        const gearKey = (el.getAttribute('data-l') || '') + '|' + (el.getAttribute('data-lk') || '') + '|' + gearCacheVersion;
+        const gearKey = (el.getAttribute('data-l') || '') + '|' +
+                        (el.getAttribute('data-lk') || '') + '|' +
+                        gearCacheVersion;
         if (el._lastSpriteKey !== gearKey) {
             el._lastSpriteKey = gearKey;
             const newUrl = getMineSpriteForElement(el);
-            if (newUrl && !newUrl.startsWith('PASTE_') && !newUrl.startsWith('/*')) {
+            if (newUrl &&
+                newUrl.trim() !== "" &&
+                !newUrl.startsWith('PASTE_') &&
+                !newUrl.startsWith('/*')) {
                 const currentSrc = sprite.getAttribute('src');
                 if (currentSrc !== newUrl) {
                     sprite.src = newUrl;
                     sprite.style.visibility = 'visible';
-                } else { sprite.style.visibility = 'visible'; }
+                } else {
+                    sprite.style.visibility = 'visible';
+                }
             }
         }
 
         const isDig = el.classList.contains('dig');
         const isFl = el.classList.contains('fl');
-        const isWalking = (el._lastMovedAt > 0 && (performance.now() - el._lastMovedAt) < 150) && !isDig;
+        const isWalking = (el._lastMovedAt > 0 &&
+                           (performance.now() - el._lastMovedAt) < 150) &&
+                          !isDig;
         box.classList.toggle('state-dig', isDig);
         box.classList.toggle('state-walk', isWalking);
+
         let wantFlip = (FACING_CONFIG.ignoreGameFlip ? false : isFl) || el._lastDir === 'left';
         if (FACING_CONFIG.invertHorizontal) wantFlip = !wantFlip;
         if (FACING_CONFIG.forceFlip) wantFlip = true;
+
         box.classList.toggle('flipped', wantFlip);
         box.classList.toggle('flipped-y', FACING_CONFIG.invertVertical);
         if (el._lastDir) box.dataset.dir = el._lastDir;
@@ -629,7 +738,7 @@
             }
         });
 
-        // ОПТИМИЗАЦИЯ: тяжелый поиск SVG делаем раз в 15 кадров (~4 раза в секунду)
+        // Тяжёлый поиск SVG делаем раз в 15 кадров (~4 раза в секунду)
         tickCounter++;
         if (tickCounter >= 15) {
             if (document.querySelector('svg.jl-doodle')) processCharacterTab();
@@ -638,19 +747,20 @@
         requestAnimationFrame(tickHeroes);
     }
 
-    // ОПТИМИЗАЦИЯ: быстрый выход в MutationObserver
     const observer = new MutationObserver(mutations => {
         for (let i = 0; i < mutations.length; i++) {
             const nodes = mutations[i].addedNodes;
             for (let j = 0; j < nodes.length; j++) {
                 const node = nodes[j];
                 if (node.nodeType !== 1) continue;
-                if (node.classList?.contains('mn-h')) initMineHero(node);
+
+                if (node.classList && node.classList.contains('mn-h')) initMineHero(node);
                 if (node.querySelectorAll) {
                     const heroes = node.querySelectorAll('.mn-h');
                     if (heroes.length) heroes.forEach(initMineHero);
                 }
-                if (node.matches?.('svg.jl-doodle') || node.querySelector?.('svg.jl-doodle')) {
+                if ((node.matches && node.matches('svg.jl-doodle')) ||
+                    (node.querySelector && node.querySelector('svg.jl-doodle'))) {
                     processCharacterTab();
                 }
             }
@@ -659,6 +769,4 @@
     observer.observe(document.body, { childList: true, subtree: true });
     document.querySelectorAll('.mn-h').forEach(initMineHero);
     requestAnimationFrame(tickHeroes);
-
-    log('INIT', 'DwarfMod успешно запущен!');
 })();
