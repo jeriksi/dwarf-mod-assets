@@ -397,6 +397,7 @@
         if (wrapJDoodle()) clearInterval(fallbackInterval);
     }, 500);
     setTimeout(() => clearInterval(fallbackInterval), 40000);
+    
     // ==========================================
     // ЧАСТЬ 5: CANVAS ХУК (Гладкая обводка)
     // ==========================================
@@ -459,20 +460,19 @@
                 const currentWeight = (window.FONT_CONFIG.weight === 'bold' || isMe) ? 'bold' : 'normal';
 
                 const displayText = (icons ? icons + ' ' : '') + trimmedText;
+                const iconWidth = icons ? (icons.length * 18) : 0;
 
                 this.font = `${currentWeight} ${currentSize}px ${window.FONT_CONFIG.family}`;
 
-                this.textAlign = 'center';
-                this.textBaseline = 'middle';
+                let drawX = x;
+                let drawY = y;
                 
-                // ФИКС ДЛЯ ТЕЛЕФОНОВ: используем координаты игры, а не центр холста
-                // Если есть иконка, немного смещаем ник влево, чтобы он остался ровно над головой
-                const iconWidth = icons ? (icons.length * 18) : 0;
-                const drawX = x - (iconWidth / 2);
-                const drawY = y;
+                if (this.textAlign === 'center') {
+                    drawX -= (iconWidth / 2);
+                }
 
                 // Гладкая обводка
-                this.lineWidth = 2.5; // <--- РЕГУЛЯТОР ТОЛЩИНЫ
+                this.lineWidth = 2.5;
                 this.lineJoin = 'round';
                 this.lineCap = 'round';
                 this.miterLimit = 2;
@@ -484,6 +484,8 @@
                 if (isMe) {
                     this.shadowColor = textColor !== '#ffffff' ? textColor : '#ffffff';
                     this.shadowBlur = 4; // <--- РЕГУЛЯТОР СВЕЧЕНИЯ
+                } else {
+                    this.shadowBlur = 0;
                 }
 
                 this.fillStyle = textColor;
