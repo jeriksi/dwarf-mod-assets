@@ -153,8 +153,10 @@
     const CUSTOM_COLORS  = {
         "Silz_1": { color: "#46c213", bg: 'rgba(70, 194, 19, 0.3)' },
         "jeriksi": { color: "#f5e942", bg: 'rgba(245, 233, 66, 0.3)' },
-        // "Ник": { color: '#ff0000', bg: 'rgba(255, 0, 0, 0.2)' },
+        "fireartutzxc": { color: "#E8590C", bg: 'rgba(232, 89, 12, 0.3)' },
+        "spector99th": { color: "#d93434", bg: 'rgba(217, 52, 52, 0.3)' },
     };
+    
     const GUILD_LOOKUP = {};
     for (const g in GUILDS) {
         for (const member of GUILDS[g].members) {
