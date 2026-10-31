@@ -154,7 +154,7 @@
     // Кастомные цвета ников (только текст, без фона)
     const CUSTOM_COLORS  = {
         "Silz_1": { color: "#46c213", bg: 'rgba(70, 194, 19, 0.3)' },
-        "jeriksi": { color: "#f5e942", bg: 'rgba(245, 233, 66, 0.3)' },
+        "jeriksi": { color: "#f5dd42", bg: 'rgba(245, 221, 66, 0.3)' },
         "fireartutzxc": { color: "#E8590C", bg: 'rgba(232, 89, 12, 0.3)' },
         "spector99th": { color: "#d93434", bg: 'rgba(217, 52, 52, 0.3)' },
     };
