@@ -459,29 +459,36 @@
                 const currentSize = isMe ? window.FONT_CONFIG.size + 2 : window.FONT_CONFIG.size;
                 const currentWeight = (window.FONT_CONFIG.weight === 'bold' || isMe) ? 'bold' : 'normal';
 
-                this.font = `${currentWeight} ${currentSize}px ${window.FONT_CONFIG.family}`;
-
                 const displayText = (icons ? icons + ' ' : '') + trimmedText;
 
+                this.font = `${currentWeight} ${currentSize}px ${window.FONT_CONFIG.family}`;
+
+                // ❗ ВЫЧИСЛЯЕМ ТОЧНУЮ ШИРИНУ ИКОНКИ, чтобы сдвинуть ник обратно
                 let iconWidth = 0;
                 if (icons) {
-                    const iconMetrics = origMeasureText.call(this, icons + ' ');
-                    iconWidth = iconMetrics.width;
+                    const textMetrics = origMeasureText.call(this, trimmedText);
+                    const displayMetrics = origMeasureText.call(this, displayText);
+                    iconWidth = displayMetrics.width - textMetrics.width;
                 }
 
+                // ❗ ИСПОЛЬЗУЕМ КООРДИНАТЫ ИГРЫ
                 let drawX = x;
                 let drawY = y;
 
+                // Сдвигаем начало текста влево, чтобы сам ник остался на месте
                 if (iconWidth > 0) {
                     if (this.textAlign === 'center') {
                         drawX -= iconWidth / 2;
                     } else if (this.textAlign === 'right' || this.textAlign === 'end') {
+                        // При выравнивании по правому краю ничего не делаем
                     } else {
+                        // left, start или undefined — сдвигаем на всю ширину иконки
                         drawX -= iconWidth;
                     }
                 }
 
-                this.lineWidth = 2.5;
+                // Гладкая обводка
+                this.lineWidth = 2.5; // <--- РЕГУЛЯТОР ТОЛЩИНЫ
                 this.lineJoin = 'round';
                 this.lineCap = 'round';
                 this.miterLimit = 2;
@@ -492,7 +499,7 @@
 
                 if (isMe) {
                     this.shadowColor = textColor !== '#ffffff' ? textColor : '#ffffff';
-                    this.shadowBlur = 0;
+                    this.shadowBlur = 4; // <--- РЕГУЛЯТОР СВЕЧЕНИЯ
                 } else {
                     this.shadowBlur = 0;
                 }
