@@ -154,6 +154,7 @@
         "Silz_1": { color: "#46c213", bg: 'rgba(70, 194, 19, 0.3)' },
         // "Ник": { color: '#ff0000', bg: 'rgba(255, 0, 0, 0.2)' },
     };
+    
     const GUILD_LOOKUP = {};
     for (const g in GUILDS) {
         for (const member of GUILDS[g].members) {
@@ -396,7 +397,6 @@
         if (wrapJDoodle()) clearInterval(fallbackInterval);
     }, 500);
     setTimeout(() => clearInterval(fallbackInterval), 40000);
-
     // ==========================================
     // ЧАСТЬ 5: CANVAS ХУК (Гладкая обводка)
     // ==========================================
@@ -464,8 +464,12 @@
 
                 this.textAlign = 'center';
                 this.textBaseline = 'middle';
-                const drawX = this.canvas.width / 2;
-                const drawY = this.canvas.height / 2;
+                
+                // ФИКС ДЛЯ ТЕЛЕФОНОВ: используем координаты игры, а не центр холста
+                // Если есть иконка, немного смещаем ник влево, чтобы он остался ровно над головой
+                const iconWidth = icons ? (icons.length * 18) : 0;
+                const drawX = x - (iconWidth / 2);
+                const drawY = y;
 
                 // Гладкая обводка
                 this.lineWidth = 2.5; // <--- РЕГУЛЯТОР ТОЛЩИНЫ
@@ -479,7 +483,7 @@
 
                 if (isMe) {
                     this.shadowColor = textColor !== '#ffffff' ? textColor : '#ffffff';
-                    this.shadowBlur = 0; // <--- РЕГУЛЯТОР СВЕЧЕНИЯ
+                    this.shadowBlur = 4; // <--- РЕГУЛЯТОР СВЕЧЕНИЯ
                 }
 
                 this.fillStyle = textColor;
@@ -492,7 +496,7 @@
     }
     hookContext(window.CanvasRenderingContext2D);
     if (typeof OffscreenCanvasRenderingContext2D !== 'undefined') hookContext(window.OffscreenCanvasRenderingContext2D);
-
+    
     // ==========================================
     // ЧАСТЬ 6: ШАХТА (DOM)
     // ==========================================
