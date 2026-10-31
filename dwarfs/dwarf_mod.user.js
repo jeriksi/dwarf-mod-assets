@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Multidonate Dwarf Mod
 // @namespace   http://tampermonkey.net/
-// @version     222.5
+// @version     222.6
 // @match       https://play.multidonate.ru/*
 // @run-at      document-start
 // @grant       none
@@ -155,7 +155,6 @@
         "jeriksi": { color: "#f5e942", bg: 'rgba(245, 233, 66, 0.3)' },
         // "Ник": { color: '#ff0000', bg: 'rgba(255, 0, 0, 0.2)' },
     };
-
     const GUILD_LOOKUP = {};
     for (const g in GUILDS) {
         for (const member of GUILDS[g].members) {
@@ -273,7 +272,7 @@
     };
 
     // ==========================================
-    // ЧАСТЬ 4: ПЕРЕХВАТ JDOODLE (SETTER + RAF)
+    // ЧАСТЬ 4: ПЕРЕХВАТ JDOODLE (ИСПРАВЛЕНА ЛОГИКА)
     // ==========================================
     function wrapJDoodle() {
         if (jdoodleWrapped) return true;
@@ -293,6 +292,8 @@
                 return originalJDoodle.apply(this, arguments);
             }
             if (document.querySelector('.mn-h')) return originalJDoodle.apply(this, arguments);
+
+            // 1. Другие игроки (в городе)
             if (who) {
                 let gear = (who === window.myUsername) ? (lastMyGear || extra.gear) : (extra.gear || playerGearCache[who] || {});
                 if (extra.gear) playerGearCache[who] = extra.gear;
@@ -309,7 +310,9 @@
                 }
                 return originalJDoodle.apply(this, arguments);
             }
-            if (!who) {
+
+            // 2. Главный герой (ТОЛЬКО В МЕНЮ #tab-hero)
+            if (!who && document.querySelector('#tab-hero.tab.on')) {
                 let playerClass = CLASSES.recruit;
                 if (lastMyGear) playerClass = detectPlayerClass(lastMyGear);
                 let spriteUrl = getPlayerSprite(window.myUsername);
@@ -322,6 +325,8 @@
                     return `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><image href="${spriteUrl}" width="32" height="32" style="image-rendering: pixelated;" preserveAspectRatio="none" /></svg>`;
                 }
             }
+
+            // Все остальные (НПС без npc:, декорации) остаются как есть
             return originalJDoodle.apply(this, arguments);
         };
 
