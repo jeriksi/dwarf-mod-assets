@@ -463,12 +463,14 @@
 
                 this.font = `${currentWeight} ${currentSize}px ${window.FONT_CONFIG.family}`;
 
-                // ❗ БЕРЕМ КООРДИНАТЫ ИГРЫ БЕЗ ИЗМЕНЕНИЙ
+                // ❗ ВЕРТИКАЛЬ: принудительно ставим по центру холста (чтобы не уезжало вверх)
+                this.textBaseline = 'middle';
+                let drawY = this.canvas.height / 2;
+                
+                // ❗ ГОРИЗОНТАЛЬ: берем координату X от игры (чтобы не съезжало вбок)
                 let drawX = x;
-                let drawY = y;
 
-                // Если есть иконка, мы сдвигаем текст влево ровно на её ширину,
-                // чтобы сам НИК остался там, куда его поставила игра
+                // Сдвигаем текст влево, чтобы добавленная иконка не смещала сам ник
                 if (icons) {
                     const iconMetrics = origMeasureText.call(this, icons + ' ');
                     if (this.textAlign === 'center') {
