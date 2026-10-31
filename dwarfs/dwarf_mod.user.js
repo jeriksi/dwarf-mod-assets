@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name        Multidonate Dwarf Mod (FINAL v222.5 - Mobile Optimized)
+// @name        Multidonate Dwarf Mod
 // @namespace   http://tampermonkey.net/
 // @version     222.5
 // @match       https://play.multidonate.ru/*
@@ -13,7 +13,7 @@
     const _win = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
     const log = (tag, ...args) => console.log(`%c[${tag}]`, 'color: #00ffff; font-weight: bold;', ...args);
 
-    log('INIT', 'Скрипт v222.5 запущен!');
+    log('INIT', 'Dwarf Mod запущен!');
 
     // ==========================================
     // ЧАСТЬ 1: КОНФИГУРАЦИЯ
@@ -653,5 +653,5 @@
     document.querySelectorAll('.mn-h').forEach(initMineHero);
     requestAnimationFrame(tickHeroes);
 
-    log('INIT', 'DwarfMod v222.5 (Optimized) успешно запущен!');
+    log('INIT', 'DwarfMod успешно запущен!');
 })();
