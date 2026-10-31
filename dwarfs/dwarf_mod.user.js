@@ -479,7 +479,7 @@
 
                 if (isMe) {
                     this.shadowColor = textColor !== '#ffffff' ? textColor : '#ffffff';
-                    this.shadowBlur = 4; // <--- РЕГУЛЯТОР СВЕЧЕНИЯ
+                    this.shadowBlur = 0; // <--- РЕГУЛЯТОР СВЕЧЕНИЯ
                 }
 
                 this.fillStyle = textColor;
