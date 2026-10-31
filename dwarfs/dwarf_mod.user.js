@@ -459,20 +459,29 @@
                 const currentSize = isMe ? window.FONT_CONFIG.size + 2 : window.FONT_CONFIG.size;
                 const currentWeight = (window.FONT_CONFIG.weight === 'bold' || isMe) ? 'bold' : 'normal';
 
-                const displayText = (icons ? icons + ' ' : '') + trimmedText;
-                const iconWidth = icons ? (icons.length * 18) : 0;
-
                 this.font = `${currentWeight} ${currentSize}px ${window.FONT_CONFIG.family}`;
-                
-                let drawX = x;
-                let drawY = y;
-                
-                if (this.textAlign === 'center') {
-                    drawX -= (iconWidth / 2);
+
+                const displayText = (icons ? icons + ' ' : '') + trimmedText;
+
+                let iconWidth = 0;
+                if (icons) {
+                    const iconMetrics = origMeasureText.call(this, icons + ' ');
+                    iconWidth = iconMetrics.width;
                 }
 
-                // Гладкая обводка
-                this.lineWidth = 2.5; // <--- РЕГУЛЯТОР ТОЛЩИНЫ
+                let drawX = x;
+                let drawY = y;
+
+                if (iconWidth > 0) {
+                    if (this.textAlign === 'center') {
+                        drawX -= iconWidth / 2;
+                    } else if (this.textAlign === 'right' || this.textAlign === 'end') {
+                    } else {
+                        drawX -= iconWidth;
+                    }
+                }
+
+                this.lineWidth = 2.5;
                 this.lineJoin = 'round';
                 this.lineCap = 'round';
                 this.miterLimit = 2;
@@ -483,7 +492,7 @@
 
                 if (isMe) {
                     this.shadowColor = textColor !== '#ffffff' ? textColor : '#ffffff';
-                    this.shadowBlur = 4; // <--- РЕГУЛЯТОР СВЕЧЕНИЯ
+                    this.shadowBlur = 4;
                 } else {
                     this.shadowBlur = 0;
                 }
