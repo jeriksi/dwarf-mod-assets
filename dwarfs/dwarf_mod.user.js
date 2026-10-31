@@ -399,7 +399,7 @@
     setTimeout(() => clearInterval(fallbackInterval), 40000);
     
     // ==========================================
-    // ЧАСТЬ 5: CANVAS ХУК (Гладкая обводка)
+    // ЧАСТЬ 5: CANVAS ХУК (Гладкая обводка + ФОН)
     // ==========================================
     function isNameplateCanvas(canvas) {
         return canvas && canvas.height > 0 && canvas.height < 100 && canvas.width > canvas.height;
@@ -413,7 +413,10 @@
         const originalStrokeText = ContextClass.prototype.strokeText;
         if (!originalFillText) return;
 
-        const blockMethods = ['fill', 'stroke', 'fillRect', 'strokeRect', 'arc', 'ellipse', 'strokeText'];
+        // ❗ ТЕПЕРЬ МЫ НЕ БЛОКИРУЕМ ФОН. 
+        // Игра будет рисовать свои плашки через fill/fillRect.
+        // Блокируем только strokeText, чтобы не было двойной стандартной обводки.
+        const blockMethods = ['strokeText'];
         blockMethods.forEach(method => {
             const original = ContextClass.prototype[method];
             if (!original) return;
@@ -463,25 +466,26 @@
 
                 this.font = `${currentWeight} ${currentSize}px ${window.FONT_CONFIG.family}`;
 
-                // ❗ ВЕРТИКАЛЬ: принудительно ставим по центру холста (чтобы не уезжало вверх)
-                this.textBaseline = 'middle';
-                let drawY = this.canvas.height / 2;
-                
-                // ❗ ГОРИЗОНТАЛЬ: берем координату X от игры (чтобы не съезжало вбок)
-                let drawX = x;
-
-                // Сдвигаем текст влево, чтобы добавленная иконка не смещала сам ник
+                // Точный расчет ширины иконки
+                let iconWidth = 0;
                 if (icons) {
-                    const iconMetrics = origMeasureText.call(this, icons + ' ');
-                    if (this.textAlign === 'center') {
-                        drawX -= iconMetrics.width / 2;
-                    } else if (this.textAlign === 'left' || this.textAlign === 'start') {
-                        drawX -= iconMetrics.width;
-                    }
+                    const textMetrics = origMeasureText.call(this, trimmedText);
+                    const displayMetrics = origMeasureText.call(this, displayText);
+                    iconWidth = displayMetrics.width - textMetrics.width;
+                }
+
+                let drawX = x;
+                let drawY = y;
+                
+                // Сдвигаем текст влево, чтобы иконка не смещала сам ник
+                if (this.textAlign === 'center') {
+                    drawX -= (iconWidth / 2);
+                } else if (this.textAlign === 'left' || this.textAlign === 'start') {
+                    drawX -= iconWidth;
                 }
 
                 // Гладкая обводка
-                this.lineWidth = 2.5; // <--- РЕГУЛЯТОР ТОЛЩИНЫ
+                this.lineWidth = 2.5;
                 this.lineJoin = 'round';
                 this.lineCap = 'round';
                 this.miterLimit = 2;
@@ -492,7 +496,7 @@
 
                 if (isMe) {
                     this.shadowColor = textColor !== '#ffffff' ? textColor : '#ffffff';
-                    this.shadowBlur = 4; // <--- РЕГУЛЯТОР СВЕЧЕНИЯ
+                    this.shadowBlur = 4;
                 } else {
                     this.shadowBlur = 0;
                 }
