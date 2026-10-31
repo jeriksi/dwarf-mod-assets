@@ -463,38 +463,23 @@
 
                 this.font = `${currentWeight} ${currentSize}px ${window.FONT_CONFIG.family}`;
 
-                // Вычисляем ширину иконки, чтобы вернуть ник на место
-                let iconWidth = 0;
-                if (icons) {
-                    const textMetrics = origMeasureText.call(this, trimmedText);
-                    const displayMetrics = origMeasureText.call(this, displayText);
-                    iconWidth = displayMetrics.width - textMetrics.width;
-                }
-
-                // Принудительно центрируем текст
-                this.textAlign = 'center';
-                this.textBaseline = 'middle';
-                
-                // Координаты
+                // ❗ БЕРЕМ КООРДИНАТЫ ИГРЫ БЕЗ ИЗМЕНЕНИЙ
                 let drawX = x;
                 let drawY = y;
-                const dpr = window.devicePixelRatio || 1;
 
-                // Если игра передала 0,0 (частая ситуация на мобилках),
-                // берем центр холста с учетом плотности пикселей
-                if (drawX === 0 && drawY === 0) {
-                    drawX = (this.canvas.width / 2) / dpr;
-                    drawY = (this.canvas.height / 2) / dpr;
-                }
-
-                // Сдвигаем текст влево на половину ширины иконки, 
-                // чтобы сам ник остался ровно по центру над головой
-                if (iconWidth > 0) {
-                    drawX -= iconWidth / 2;
+                // Если есть иконка, мы сдвигаем текст влево ровно на её ширину,
+                // чтобы сам НИК остался там, куда его поставила игра
+                if (icons) {
+                    const iconMetrics = origMeasureText.call(this, icons + ' ');
+                    if (this.textAlign === 'center') {
+                        drawX -= iconMetrics.width / 2;
+                    } else if (this.textAlign === 'left' || this.textAlign === 'start') {
+                        drawX -= iconMetrics.width;
+                    }
                 }
 
                 // Гладкая обводка
-                this.lineWidth = 2.5;
+                this.lineWidth = 2.5; // <--- РЕГУЛЯТОР ТОЛЩИНЫ
                 this.lineJoin = 'round';
                 this.lineCap = 'round';
                 this.miterLimit = 2;
@@ -505,7 +490,7 @@
 
                 if (isMe) {
                     this.shadowColor = textColor !== '#ffffff' ? textColor : '#ffffff';
-                    this.shadowBlur = 4;
+                    this.shadowBlur = 4; // <--- РЕГУЛЯТОР СВЕЧЕНИЯ
                 } else {
                     this.shadowBlur = 0;
                 }
