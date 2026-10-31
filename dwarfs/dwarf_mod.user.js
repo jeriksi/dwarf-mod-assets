@@ -463,7 +463,7 @@
                 const iconWidth = icons ? (icons.length * 18) : 0;
 
                 this.font = `${currentWeight} ${currentSize}px ${window.FONT_CONFIG.family}`;
-
+                
                 let drawX = x;
                 let drawY = y;
                 
@@ -472,7 +472,7 @@
                 }
 
                 // Гладкая обводка
-                this.lineWidth = 2.5;
+                this.lineWidth = 2.5; // <--- РЕГУЛЯТОР ТОЛЩИНЫ
                 this.lineJoin = 'round';
                 this.lineCap = 'round';
                 this.miterLimit = 2;
