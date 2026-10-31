@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Multidonate Dwarf Mod
 // @namespace   http://tampermonkey.net/
-// @version     222.7
+// @version     222.8
 // @match       https://play.multidonate.ru/*
 // @run-at      document-start
 // @grant       none
