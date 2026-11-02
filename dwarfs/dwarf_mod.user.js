@@ -157,6 +157,8 @@
         "jeriksi": { color: "#f5dd42", bg: 'rgba(245, 221, 66, 0.3)' },
         "fireartutzxc": { color: "#E8590C", bg: 'rgba(232, 89, 12, 0.3)' },
         "spector99th": { color: "#d93434", bg: 'rgba(217, 52, 52, 0.3)' },
+        "dragonsd1ce": { color: "#fcc603", bg: 'rgba(252, 198, 3, 0.3)' },
+        "rak1n11": { color: "#4603ff", bg: 'rgba(70, 3, 255, 0.3)' }
     };
 
     const GUILD_LOOKUP = {};
